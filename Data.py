@@ -3,13 +3,19 @@
 #   Student ID: B123103
             
 #xlsx conversion
-from tabulate import tabulate
+
 import os
 import math
+#from pylab import *
+#import numpy as np
 
-def showData(Data):
-    print tabulate(Data.document, headers="keys",tablefmt="grid")
-
+def showData(Data,x,y):
+    #xlabel(x)
+    #ylabel(y)
+    #plot(Data.getBy(x.upper()),Data.getBy(y.upper()),"bo")
+    #show()
+    pass
+    
 def showLegend(Data):
     os.system('clear')
     for i,j in Data.tagLine.items():
@@ -25,19 +31,19 @@ class Data:
         doc=self.xlsx('CWData.xlsx')
 
         for i in range(1,10):
-            self.tagLine[doc[i]["L"]]=doc[i]["M"]
+            self.tagLine[str(i-1)]=doc[i]["M"]
             
         for i in range(1,len(doc)):
             newObject={}
-            newObject["AREA"]=float(doc[i]["A"])
-            newObject["BFIHOST"]=float(doc[i]["B"])
-            newObject["FARL"]=float(doc[i]["C"])
-            newObject["FPEXT"]=float(doc[i]["D"])
-            newObject["LDP"]=float(doc[i]["E"])
-            newObject["PROPWET"]=float(doc[i]["F"])
-            newObject["RMED-1D"]=float(doc[i]["G"])
-            newObject["SAAR"]=float(doc[i]["H"])
-            newObject["Index flood"]=float(doc[i]["I"])
+            newObject["0"]=float(doc[i]["A"])
+            newObject["1"]=float(doc[i]["B"])
+            newObject["2"]=float(doc[i]["C"])
+            newObject["3"]=float(doc[i]["D"])
+            newObject["4"]=float(doc[i]["E"])
+            newObject["5"]=float(doc[i]["F"])
+            newObject["6"]=float(doc[i]["G"])
+            newObject["7"]=float(doc[i]["H"])
+            newObject["8"]=float(doc[i]["I"])
             self.document.append(newObject)
             
 

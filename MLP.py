@@ -1,197 +1,273 @@
-#   MLP Controller
-#   @Copywright Max Pearson
-#   Student ID: B123103
+import random
+import math as Math
+from Data import *
+import pylab
 
+def fill1(L1):
+    return [0.0 for y in range(L1)]
+            
+def fill2(L1,L2):
+    return [[0.0 for x in range(L2)] for y in range(L1)]
 
+def randomGenerator(n):
+    return random.randrange(0,n)
 
-import os
-import math
-
+#------------------------------------------------------------ 
+#----------- Multi-Layer Perceptron Learning Class ----------
 
 class MLP:
     def __init__(self):
-        self.n_in=100 #number of input nodes
-        self.n_hid=10 #number of hidden nodes
-        self.n_out=2 #number of output nodes
-        self.eta=0.1 #learning rate 
-        self.tr_examp=20 #training examples
+        self.DATA=Data()
 
-        self.input=[]
-        self.hidden=[]
-        self.output=[]
+        #Variables
+        self.number_of_epochs = 100     #Number of training cycles
+        self.number_of_inputs  = 3      #Number of inputs - this includes the input bias
+        self.number_of_hidden  = 4      #Number of hidden units
+        self.number_of_tr_patterns = 4  #Number of training patterns
+        self.learning_rate_IH = 0.2     #Learning rate for input layer
+        self.learning_rate_HO = 0.05    #Learning rate for output layer
+
+        self.patternN=0.0               #Pattern Number
+        self.error_this=0.0             #Pattern Number Selected to Error
+        self.prediction=0.0
+        self.error=0.0                  #Root-Mean-Squared Error
+
+        #   Training DATA
+        self.training_Input  = fill2(self.number_of_tr_patterns,self.number_of_inputs) 
+        self.training_Output = fill1(self.number_of_tr_patterns)
+
+        #   Outputs of Hidden Neurons
+        self.hidden_neurons  = fill1(self.number_of_hidden) 
+
+        #   Weights 
+        self.IH_WEIGHTS = fill2(self.number_of_inputs,self.number_of_hidden)
+        self.HO_WEGHTS = fill1(self.number_of_hidden)
         
-        self.ih_weight=[[0 for x in range(self.n_in)] for x in range(self.n_hid)] 
-        self.ho_weight=[[0 for x in range(self.n_hid)] for x in range(self.n_out)] 
-        self.stim= [[0 for x in range(self.tr_examp)] for x in range(self.n_in)] 
-        self.resp= [[0 for x in range(self.tr_examp)] for x in range(self.n_out)] 
+#------------------------------------------------------------ 
+#-------------- Find error in training set- -----------------
+
+def output_hidden(mlp):
+    #calculate the outputs of the hidden neurons
+    #-------------------------------------- 
+    for i in range (mlp.number_of_hidden):
+        mlp.hidden_neurons[i] = 0.0
+        #-------------------------------------- 
+        for j in range (mlp.number_of_inputs):
+            mlp.hidden_neurons[i] = mlp.hidden_neurons[i] + mlp.training_Input[mlp.patternN][j] * mlp.IH_WEIGHTS[j][i]
+        #-------------------------------------- 
+        #Tanh (hyperbolic tangent of Hidden neurons)
+        mlp.hidden_neurons[i] = Math.tanh(mlp.hidden_neurons[i])
+    #-------------------------------------- 
+
+    #Calculate Output
+    mlp.prediction = 0.0
+
+    #-------------------------------------- 
+    for i in range (mlp.number_of_hidden):
+        mlp.prediction = mlp.prediction + mlp.hidden_neurons[i] * mlp.HO_WEGHTS[i]
+    #-------------------------------------- 
+
+    #Calculate Error
+    mlp.error_this = mlp.prediction - mlp.training_Output[mlp.patternN]
+
+#------------------------------------------------------------ 
+#-------------- Calculate Changes in Hidden Output ---------- 
+
+def change_in_output(mlp):
+    for i in range (mlp.number_of_hidden):
+        
+        #Calculate Change in weights
+        weightChange = mlp.learning_rate_HO * mlp.error_this * mlp.hidden_neurons[i]
+        mlp.HO_WEGHTS[i] = mlp.HO_WEGHTS[i] - weightChange
+
+        #Smooth
+        if (mlp.HO_WEGHTS[i] < -3):
+            mlp.HO_WEGHTS[i] = -3
+
+            
+        elif (mlp.HO_WEGHTS[i] > 3):
+            mlp.HO_WEGHTS[i] = 3
+
+#------------------------------------------------------------ 
+#-------------- Calculate Changes in Hidden Input -----------
+
+def change_in_hidden(mlp):
+    #Adjust weights
+    #-------------------------------------- 
+    for i in range(mlp.number_of_hidden):
+       #-------------------------------------- 
+       for k in range (mlp.number_of_inputs):
+           x = 1 - (mlp.hidden_neurons[i] * mlp.hidden_neurons[i])
+           x = x * mlp.HO_WEGHTS[i] * mlp.error_this * mlp.learning_rate_IH
+           x = x * mlp.training_Input[mlp.patternN][k]
+           weightChange = x
+           mlp.IH_WEIGHTS[k][i] = mlp.IH_WEIGHTS[k][i] - weightChange
+       #-------------------------------------- 
+    #-------------------------------------- 
+
+#------------------------------------------------------------ 
+#-------------- Initiate weights------ ---------------------- 
+
+def  initiate_weights(mlp):
+  #Initiate Weights with random number 0-5
+  #-------------------------------------- 
+  for i in range(mlp.number_of_hidden):
+    mlp.HO_WEGHTS[i] = (randomGenerator(5) - 0.5)/2
+    #-------------------------------------- 
+    for j in range(mlp.number_of_inputs):
+        mlp.IH_WEIGHTS[j][i] = (randomGenerator(5)  - 0.5)/5
+    #-------------------------------------- 
+  #-------------------------------------- 
+
+#------------------------------------------------------------ 
+#-------------- Initiate giden data ------------------------- 
+
+def initiate_test_data(mlp):
+    data=mlp.DATA
+    #-------------------------------------- 
+    for i in range(mlp.number_of_tr_patterns):
+        #-------------------------------------- 
+        for j in range((mlp.number_of_inputs-1)):
+            mlp.training_Input[i][j]=data.getBy( str(j) )[i]
+        #-------------------------------------- 
+        #bias
+        mlp.training_Input[i][mlp.number_of_inputs-1]=1.0
+        mlp.training_Output[i]=data.getBy("8")[i]
+    #-------------------------------------- 
+        
+                         
+#------------------------------------------------------------ 
+#-------------- Initiate training data ----------------------                   
+            
+#Initialise test DATA Set
+def initiate_data(mlp):
+    print "\n\n---Initialisation---\n"
+
+    #   Pattern 0
+    mlp.training_Input[0][0]  = 1
+    mlp.training_Input[0][1]  = -1
+
+    #   Pattern 1
+    mlp.training_Input[1][0]  = -1
+    mlp.training_Input[1][1]  = 1
+
+    #   Pattern 2
+    mlp.training_Input[2][0]  = 1
+    mlp.training_Input[2][1]  = 1
+
+    #   Pattern 3
+    mlp.training_Input[3][0]  = -1
+    mlp.training_Input[3][1]  = -1
+
+    #   Biases
+    mlp.training_Input[0][2]  = 1
+    mlp.training_Input[1][2]  = 1 
+    mlp.training_Input[2][2]  = 1
+    mlp.training_Input[3][2]  = 1
 
 
-    def zeroVector(self,vector,n1,n2):
+    #Real Output for Comparison
+    mlp.training_Output[0] = 1
+    mlp.training_Output[1] = 1
+    mlp.training_Output[2] = -1
+    
+#------------------------------------------------------------ 
+#------------------ Show Results ----------------------------
+        
+def show_results(mlp):
+     predictions=[]
+     #-------------------------------------- 
+     for patternN in range(mlp.number_of_tr_patterns):
+        output_hidden(mlp)
+        print "Pattern Number: {0} Actual Value:{1} Neural Net Prediction: {2}"\
+        .format((patternN+1),mlp.training_Output[patternN],mlp.prediction)
+     #-------------------------------------- 
+     pylab.plot(mlp.training_Output)
+     pylab.show()
+
+#------------------------------------------------------------ 
+#---------------- Calculate Error ---------------------------
+
+def calculate_error(mlp):
+     mlp.error = 0.0;
      
-        for i in range(n1):
-            for j in range(n2):
-                vector[i][j]=0
-        return vector
-
-    def set_inputs(self,inputs):
-        for j in range(self.n_in):
-            self.input.append(inputs[j])
-
-    def setStim(self):
-        pass
-    
-    def setResp(self):
-        pass
-
-    def resetMLP(self,N_IN,N_HID,N_OUT,ETA,TR_EXAMP):
-        self.n_in=N_IN #number of input nodes
-        self.n_hid=N_HID #number of hidden nodes
-        self.n_out=N_OUT #number of output nodes
-        self.eta=ETA #learning rate 
-        self.tr_examp=TR_EXAMP #training examples
-
-        self.input=[]
-        self.hidden=[]
-        self.output=[]
+     #-------------------------------------- 
+     for i in range (   mlp.number_of_tr_patterns   ):
         
-        self.ih_weight=[[0 for x in range(self.n_in)] for x in range(self.n_hid)] 
-        self.ho_weight=[[0 for x in range(self.n_hid)] for x in range(self.n_out)] 
-        self.stim= [[0 for x in range(self.tr_examp)] for x in range(self.n_in)] 
-        self.resp= [[0 for x in range(self.tr_examp)] for x in range(self.n_out)] 
-    
- 
+        mlp.patNum = i
+        
+        output_hidden(mlp)
+        
+        mlp.error = mlp.error + (   mlp.error_this * mlp.error_this )
 
-#Squash Activation 
-def squash(Activation,weight,type):
-    S=[0]
-    for i in range(len(weight)):
-        for j in range(len(weight[0])):
-            S[i]=S[i]+weight[i][j]*Activation[j]
+     #--------------------------------------        
+     mlp.error = mlp.error / mlp.number_of_tr_patterns
+     mlp.error = Math.sqrt( mlp.error )
 
-    for i in range(len(Activation)):
-        Activation[i]= 1 / ( 1 + math.pow( math.e , (-1 * s[i]) ))
-
-    if(type=="Hidden"):
-        mlp.hidden=Activation
-    
-    if(type=="Output"):
-        mlp.output=Activation
-    
-    return mlp
-
-#Update Weights
-def update_weights(self,weight,error,x,y):
-    Hidden=mlp.hidden
-    for j in range(x):
-        for k in range(y):
-            weight[j][k]=weight[j][k] + mlp.eta * error[k] * Hidden[j]
-    return weight
-
-def zerosN(array,n):
-    for i in range(n):
-        array.append(0);
-    return array
-
-
-
-def presentExample(mlp,inputs):
-    mlp.set_inputs(inputs)
-    return mlp
-
-#Determine hidden layer activation
-def determine_hidden(mlp):
-    
-    try:
-        N_Hid=mlp.n_hid
-        N_In=mlp.n_in
-        Input=mlp.input
-        IH_WEIGHT= mlp.ih_weight
-        Output=mlp.output
-
-        for j in range(N_Hid):
-            for i in range(N_In):
-                mlp.hidden[j]=mlp.hidden[j]+Input[i] * IH_WEIGHT[i][j]
-
-        mlp=squash(mlp.hidden,IH_WEIGHT,"Hidden")
-    
-    except Exception as e:
-        print "Error found in determining hidden layer activation"
-        raise 
-
-    
-    finally:
-        return mlp
-
-#Determine output layer activation
-def determine_output(mlp):
-    try:
-        N_Hid=mlp.n_hid
-        N_Out=mlp.n_out
-        Hidden=mlp.hidden
-        HO_WEIGHT=mlp.ho_weight
-
-        for k in range(N_Out):
-            for j in range(0, N_Hid):
-                mlp.output[k]=mlp.output[k]+Hidden[j] * HO_WEIGHT[j][k]
-
-        mlp=squash(mlp.output,HO_WEIGHT,"Output")
-    
-    except Exception as e:
-        print "Error found in determining output layer activation"
-        raise Exception
-    
-    finally:
-        return mlp
-
-#Determine Error for Output Layer
-def error_output(mlp):
+#------------------------------------------------------------ 
+#---------------------Run Program----------------------------
+def runProgram(mlp):
 
     try:
-        Delta=[]
-        N_Out=mlp.n_out
-        N_Hid=mlp.n_hid
-        Resp=mlp.resp
-        Output=mlp.output
-        Rand=randomGenerator()
-        Delta=zerosN(Delta,N_Out)
-        HO_Weight=mlp.ho_weight
+        epochs=int(raw_input("how many epochs: "))
+        mlp.number_of_epochs=epochs
         
-        for k in range(N_Out):
-            Delta[k]=Resp[Rand,0] - Output[k]
-
-        mlp.ho_weight=update_weights(HO_Weight,Delta,N_Out,N_Hid)
-    
-    except Exception as e:
-        print "Error found in determining error for output layer"
-        raise Exception
-
-    finally:
-        return mlp
-
-#Determine Error for Hidden Layer
-def error_hidden(mlp):
-    
-    try:
-        Delta=[]
-        Out_Error=0
-        N_Out=mlp.n_out
-        N_Hid=mlp.n_hid
-        Hidden=mlp.hidden
-        HO_Weight=mlp.ho_weight
-        IH_Weight=mlp.ih_weight
-        Delta=populateArray(Delta,N_Hid)
+        initiate_weights( mlp )
         
-        for j in range(N_Hid):
-            for k in range(N_Out):
-                Out_Error=Out_Error + HO_Weight[j][k]*Delta[k]
-            Delta[j]=Hidden[j] * (1 - Hidden[j] ) * Out_Error
-
-        mlp.ih_weight=update_weights(IH_Weight,Delta,N_Hid,N_In)
-    
-    except Exception as e:
-        print "Error found in determining error for output layer"
-        raise Exception
-    
-    finally:
-        return mlp   
+        initiate_data( mlp ) 
+        #-------------------------------------- 
+        for i in range (mlp.number_of_epochs):
+            #-------------------------------------- 
+            for j in range (mlp.number_of_tr_patterns):
+                mlp.patternN = randomGenerator(mlp.number_of_tr_patterns)
         
+                output_hidden(mlp)
+
+                change_in_output(mlp)
+
+                change_in_hidden(mlp)
+
+                calculate_error(mlp)
+            #-------------------------------------- 
+            print "|| node : {0} || error : {1} || ".format(i,mlp.error)
+        #-------------------------------------- 
+        show_results(mlp)
+                   
+    except Exception,err:
+        print err
+        exit()
+
+#------------------------------------------------------------ 
+#---------------------  MAIN  -------------------------------
+
+if __name__== "__main__":
+    #Create Multi-Layer Perceptron Class
+    mlp=MLP()
+
+    #Initiate Program Loop in MAIN
+    while(True):
+        
+        print "-------------------------------------------"
+        print "-------------------------------------------"
+        print "1. Run Program"
+        print "2. Exit"
+        print "-------------------------------------------"
+        print "-------------------------------------------"
+        print "-------------------------------------------"
+
+        try:
+            execute=int(raw_input("Option: "))
+            if(execute==1):
+                runProgram(mlp)
+
+            #Exit on anything  not 1!!!
+            else:
+                exit()
+                
+        #Exit on Exception (Type Error)
+        except Exception,err:
+            print "Error"
+            exit()
+#------------------------------------------------------------ 
+#------------------------------------------------------------
+    
