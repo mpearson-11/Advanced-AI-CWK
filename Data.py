@@ -17,6 +17,7 @@ def AND_F(a,b):
 def O_R(a,b):
     return int ( bool(a) or bool(b) )
 
+
 OR =[
     [[0,0,0],[ O_R(O_R(0,0),0) ]],
     [[0,0,1],[ O_R(O_R(0,0),1) ]],

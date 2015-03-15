@@ -94,10 +94,9 @@ class NETWORK:
         #------------------------------------------------------------------
         # Bias Activations
         n=[1.0]
-        (self.input_activation,self.hidden_activation,self.output_activation) \
-            = ( n * self.number_of_inputs, \
-                n * self.number_of_hidden, \
-                n * self.number_of_outputs )
+        
+        (   self.input_activation,   self.hidden_activation,    self.output_activation     )\
+    =   (  n*self.number_of_inputs,  n * self.number_of_hidden, n * self.number_of_outputs )
         #------------------------------------------------------------------
         
         # Hidden Input and Hidden Output Weights
@@ -283,9 +282,8 @@ class NETWORK:
             #----------------------------------------------------------------------
 
             #Print Formatted Data
-            print "________________________________________________"
-            print "________________________________________________"
-            print "Test Example: {0}".format(node+1)
+            print "____________________________________________________________"
+            print "\tTest Example: {0}".format(node+1)
             print "[",
             for i in range(len(output_inputNodes)):
                 print "{0}".format(output_inputNodes[i]),
@@ -325,25 +323,31 @@ Momentum = {6}".format(epochs, \
                 self.momentum)
         #----------------------------------------------------------------------
         # Main Execution of Training (print errors) 
-        print "------------------------------------------------"
-        print " Error Calculations"
-        print "------------------------------------------------"
+        print "________________________________________________"
+        print "\n|---------------------|"
+        print "| Error Calculations  |"
+        print "|---------------------|"
+        print "________________________________________________"
         errors=[]
         for epoch in range(epochs):
             error = 0.0
             
             for obj in examples:
-                inputs = obj[0]                 #Training Input
-                targets = obj[1]                #Training Output *Predictions
-                self.feed_forward(inputs)       #Forward Pass Function
-                backPropagationValue=self.backPropagate(targets) #Back Propogation Function
-                error = error + backPropagationValue #Update Error
+                inputs = obj[0]                       #Training Input
+                targets = obj[1]                      #Training Output *Predictions
+                self.feed_forward(inputs)             #Forward Pass Function
+                
+                backPropagationValue=\
+                    self.backPropagate(targets)       #Back Propogation Function
+                
+                error = error + backPropagationValue  #Update Error
             
+
             
-            #Show epoch every ...
+            #Show epoch every every 1 percent...
             if epoch % (epochs/100) == 0:
                 errors.append(error)
-                print "[ Epoch:{0}\tError = {1} ]"\
+                print " [ Epoch:{0}\tError = {1} ]"\
                 .format(epoch,error) 
         #----------------------------------------------------------------------
         plot_errors(errors)
@@ -436,19 +440,19 @@ def createConfiguredData(start,end,data,maximumV):
     return pat
 
 ###########################################################################
-#   Initiate Program 
+#                       Initiate Program 
 ###########################################################################
 def execute_MLP():
     #----------------------------------------------------------------------
     # Call class Data (populate data structure)
     
     data = Data()
-    maximumV=4800
+    maximumV=1
     #----------------------------------------------------------------------
     # Create Training and Test Data from CWKData.xlsx
     
-    TRAINING_DATA=createConfiguredData(1,51,data,maximumV) #TRAINING DATA
-    TESTING_DATA=createConfiguredData(51,65,data,maximumV) #TEST DATA
+    TRAINING_DATA=createConfiguredData(1,161,data,maximumV) #TRAINING DATA
+    TESTING_DATA=createConfiguredData(161,201,data,maximumV) #TEST DATA
     
     #----------------------------------------------------------------------
     # Assign lengths
@@ -466,7 +470,7 @@ def execute_MLP():
     #----------------------------------------------------------------------
     # Train Network with 2000 epochs and split into percentage
     
-    Network.TRAIN_WITH( TRAINING_DATA, 5000)
+    Network.TRAIN_WITH( TRAINING_DATA, 2000)
     Network.TEST( TESTING_DATA )
 
 
