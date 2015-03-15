@@ -1,21 +1,91 @@
-#   Data Controller
 #   @Copywright Max Pearson
 #   Student ID: B123103
+#   Data Class
+#   External Sources include:
+#       http://stackoverflow.com/questions/4371163/reading-xlsx-files-using-python
+
             
-#xlsx conversion
+def NOT_AND(a,b):
+    return  int(not(bool(a)) and bool(b) )
+
+def X_OR(a,b):
+    return int ( bool(a) ^ bool(b) )
+
+def AND_F(a,b):
+    return int ( bool(a) and bool(b) )
+
+def O_R(a,b):
+    return int ( bool(a) or bool(b) )
+
+OR =[
+    [[0,0,0],[ O_R(O_R(0,0),0) ]],
+    [[0,0,1],[ O_R(O_R(0,0),1) ]],
+    [[0,1,0],[ O_R(O_R(0,1),0) ]],
+    [[0,1,1],[ O_R(O_R(0,1),1) ]],
+    [[1,0,0],[ O_R(O_R(1,0),0) ]],
+    [[1,1,0],[ O_R(O_R(1,1),0) ]],
+    [[1,1,1],[ O_R(O_R(1,1),1) ]]
+]
+OR_TEST=[
+    [[0,0,0],[ O_R(O_R(0,0),0) ]],
+    [[0,0,1],[ O_R(O_R(0,0),1) ]],
+    [[0,1,0],[ O_R(O_R(0,1),0) ]],
+
+    [[1,0,0],[ O_R(O_R(1,0),0) ]],
+    [[1,1,0],[ O_R(O_R(1,1),0) ]],
+
+]
+
+AND = [
+    [[0,0,0],[ AND_F(AND_F(0,0),0) ]],
+    [[0,0,1],[ AND_F(AND_F(0,0),1) ]],
+    [[0,1,0],[ AND_F(AND_F(0,1),0) ]],
+    [[0,1,1],[ AND_F(AND_F(0,1),1) ]],
+    [[1,0,0],[ AND_F(AND_F(1,0),0) ]],
+    [[1,1,0],[ AND_F(AND_F(1,1),0) ]],
+    [[1,1,1],[ AND_F(AND_F(1,1),1) ]]
+]
+AND_TEST = [
+    [[0,0,0],[ AND_F(AND_F(0,0),0) ]],
+    [[0,1,0],[ AND_F(AND_F(0,1),0) ]],
+    [[1,0,0],[ AND_F(AND_F(1,0),0) ]],
+]
+
+XOR = [
+    [[0,0,0],[X_OR(X_OR(0,0),0)]],
+    [[0,0,1],[X_OR(X_OR(0,0),1)]],
+    [[0,1,0],[X_OR(X_OR(0,1),0)]],
+    [[0,1,1],[X_OR(X_OR(0,1),1)]],
+    [[1,0,0],[X_OR(X_OR(1,0),0)]],
+    [[1,1,0],[X_OR(X_OR(1,1),0)]],
+    [[1,1,1],[X_OR(X_OR(1,1),1)]],
+]
+
+XOR_TEST = [
+    [[0,0,0],[X_OR(X_OR(0,0),0)]],
+    [[0,1,0],[X_OR(X_OR(0,1),0)]],
+    [[1,0,0],[X_OR(X_OR(1,0),0)]],
+]
+NOT_AND = [
+    [[0,0,0],[0]],
+    [[0,0,1],[1]],
+    [[0,1,0],[1]],
+    [[0,1,1],[0]],
+    [[1,0,0],[1]],
+    [[1,1,0],[0]],
+    [[1,1,1],[1]]
+]
+NOT_AND_TEST = [
+    [[0,0,0],[0]],
+    [[0,1,0],[1]],
+    [[1,0,0],[1]],
+]
 
 import os
 import math
 #from pylab import *
 #import numpy as np
 
-def showData(Data,x,y):
-    #xlabel(x)
-    #ylabel(y)
-    #plot(Data.getBy(x.upper()),Data.getBy(y.upper()),"bo")
-    #show()
-    pass
-    
 def showLegend(Data):
     os.system('clear')
     for i,j in Data.tagLine.items():
@@ -49,6 +119,7 @@ class Data:
 
     def xlsx(self,fname):
         #http://stackoverflow.com/questions/4371163/reading-xlsx-files-using-python
+        #xlsx conversion
         import zipfile
         from xml.etree.ElementTree import iterparse
         z = zipfile.ZipFile(fname)

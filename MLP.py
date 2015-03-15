@@ -1,273 +1,474 @@
+#   @Copywright Max Pearson
+#   Student ID: B123103
+#
+#   Multilayer Perceptron using Backpropagation algorithm 
+#   
+#   External Sources include:
+#       http://stackoverflow.com/questions/4371163/reading-xlsx-files-using-python
+
+#--------------------------------------------------------------------------
+#Standard Libraries for calculations
 import random
-import math as Math
+import math
+#--------------------------------------------------------------------------
+#Data Class for Neural Network use
 from Data import *
+#--------------------------------------------------------------------------
+#Scientific Packages for plotting and array manipulation
 import pylab
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.interpolate import spline
+#--------------------------------------------------------------------------
 
-def fill1(L1):
-    return [0.0 for y in range(L1)]
-            
-def fill2(L1,L2):
-    return [[0.0 for x in range(L2)] for y in range(L1)]
+#--------------------------------------------------------------------------
 
-def randomGenerator(n):
-    return random.randrange(0,n)
+###########################################################################
+# Initiate Seed Globally
+###########################################################################
 
-#------------------------------------------------------------ 
-#----------- Multi-Layer Perceptron Learning Class ----------
+random.seed(0)
+def generateRandBetween(a, b):
+    # Return Random Number ( a <= n < b )
+    return (b - a) * random.random() + a
 
-class MLP:
-    def __init__(self):
-        self.DATA=Data()
+#--------------------------------------------------------------------------
 
-        #Variables
-        self.number_of_epochs = 100     #Number of training cycles
-        self.number_of_inputs  = 3      #Number of inputs - this includes the input bias
-        self.number_of_hidden  = 4      #Number of hidden units
-        self.number_of_tr_patterns = 4  #Number of training patterns
-        self.learning_rate_IH = 0.2     #Learning rate for input layer
-        self.learning_rate_HO = 0.05    #Learning rate for output layer
+###########################################################################
+# Populate an array with indexes (graphing)
+###########################################################################
 
-        self.patternN=0.0               #Pattern Number
-        self.error_this=0.0             #Pattern Number Selected to Error
-        self.prediction=0.0
-        self.error=0.0                  #Root-Mean-Squared Error
+def vector(n):
+    vector = []
+    for i in range(n):
+        vector.append(i)
+    return vector
+#--------------------------------------------------------------------------
 
-        #   Training DATA
-        self.training_Input  = fill2(self.number_of_tr_patterns,self.number_of_inputs) 
-        self.training_Output = fill1(self.number_of_tr_patterns)
+###########################################################################
+# Populate 2d array with length outerNum and inner Length innerNum
+###########################################################################
 
-        #   Outputs of Hidden Neurons
-        self.hidden_neurons  = fill1(self.number_of_hidden) 
+def populateVector(outerNum, innerNum):
+    vector = []
+    for i in range(outerNum):
+        vector.append([0.0]*innerNum)
+    return vector
+#--------------------------------------------------------------------------
+###########################################################################
+# Return hyperbolic tangent
+########################################################################### 
 
-        #   Weights 
-        self.IH_WEIGHTS = fill2(self.number_of_inputs,self.number_of_hidden)
-        self.HO_WEGHTS = fill1(self.number_of_hidden)
+def activation_function(n):
+    #net= -1 * n
+    #return 1 / ( 1 + math.exp(net) )
+    return math.tanh(n)
+#--------------------------------------------------------------------------
+
+###########################################################################
+#                         ------------------------
+#                         | Neural Network Class |
+#                         ------------------------
+#                         @param maximumV
+#                         @param number_of_hidden
+#                         @param number_of_inputs
+#                         @param number_of_outputs
+#                         
+#
+###########################################################################
+class NETWORK:
+    def __init__(self, number_of_inputs, number_of_hidden, number_of_outputs ,maximumV):
         
-#------------------------------------------------------------ 
-#-------------- Find error in training set- -----------------
+        #------------------------------------------------------------------
+        #   Neural Network Settings
 
-def output_hidden(mlp):
-    #calculate the outputs of the hidden neurons
-    #-------------------------------------- 
-    for i in range (mlp.number_of_hidden):
-        mlp.hidden_neurons[i] = 0.0
-        #-------------------------------------- 
-        for j in range (mlp.number_of_inputs):
-            mlp.hidden_neurons[i] = mlp.hidden_neurons[i] + mlp.training_Input[mlp.patternN][j] * mlp.IH_WEIGHTS[j][i]
-        #-------------------------------------- 
-        #Tanh (hyperbolic tangent of Hidden neurons)
-        mlp.hidden_neurons[i] = Math.tanh(mlp.hidden_neurons[i])
-    #-------------------------------------- 
+        self.number_of_inputs  = number_of_inputs + 1    # 1 more for bias 
 
-    #Calculate Output
-    mlp.prediction = 0.0
-
-    #-------------------------------------- 
-    for i in range (mlp.number_of_hidden):
-        mlp.prediction = mlp.prediction + mlp.hidden_neurons[i] * mlp.HO_WEGHTS[i]
-    #-------------------------------------- 
-
-    #Calculate Error
-    mlp.error_this = mlp.prediction - mlp.training_Output[mlp.patternN]
-
-#------------------------------------------------------------ 
-#-------------- Calculate Changes in Hidden Output ---------- 
-
-def change_in_output(mlp):
-    for i in range (mlp.number_of_hidden):
+        self.number_of_hidden , self.number_of_outputs \
+            = (number_of_hidden,number_of_outputs)
         
-        #Calculate Change in weights
-        weightChange = mlp.learning_rate_HO * mlp.error_this * mlp.hidden_neurons[i]
-        mlp.HO_WEGHTS[i] = mlp.HO_WEGHTS[i] - weightChange
+        #Default Learning Rate and Momentum (subject to change)
+        self.learning_rate , self.momentum, self.maximumV \
+            = (0.90,0.40, maximumV)
 
-        #Smooth
-        if (mlp.HO_WEGHTS[i] < -3):
-            mlp.HO_WEGHTS[i] = -3
-
-            
-        elif (mlp.HO_WEGHTS[i] > 3):
-            mlp.HO_WEGHTS[i] = 3
-
-#------------------------------------------------------------ 
-#-------------- Calculate Changes in Hidden Input -----------
-
-def change_in_hidden(mlp):
-    #Adjust weights
-    #-------------------------------------- 
-    for i in range(mlp.number_of_hidden):
-       #-------------------------------------- 
-       for k in range (mlp.number_of_inputs):
-           x = 1 - (mlp.hidden_neurons[i] * mlp.hidden_neurons[i])
-           x = x * mlp.HO_WEGHTS[i] * mlp.error_this * mlp.learning_rate_IH
-           x = x * mlp.training_Input[mlp.patternN][k]
-           weightChange = x
-           mlp.IH_WEIGHTS[k][i] = mlp.IH_WEIGHTS[k][i] - weightChange
-       #-------------------------------------- 
-    #-------------------------------------- 
-
-#------------------------------------------------------------ 
-#-------------- Initiate weights------ ---------------------- 
-
-def  initiate_weights(mlp):
-  #Initiate Weights with random number 0-5
-  #-------------------------------------- 
-  for i in range(mlp.number_of_hidden):
-    mlp.HO_WEGHTS[i] = (randomGenerator(5) - 0.5)/2
-    #-------------------------------------- 
-    for j in range(mlp.number_of_inputs):
-        mlp.IH_WEIGHTS[j][i] = (randomGenerator(5)  - 0.5)/5
-    #-------------------------------------- 
-  #-------------------------------------- 
-
-#------------------------------------------------------------ 
-#-------------- Initiate giden data ------------------------- 
-
-def initiate_test_data(mlp):
-    data=mlp.DATA
-    #-------------------------------------- 
-    for i in range(mlp.number_of_tr_patterns):
-        #-------------------------------------- 
-        for j in range((mlp.number_of_inputs-1)):
-            mlp.training_Input[i][j]=data.getBy( str(j) )[i]
-        #-------------------------------------- 
-        #bias
-        mlp.training_Input[i][mlp.number_of_inputs-1]=1.0
-        mlp.training_Output[i]=data.getBy("8")[i]
-    #-------------------------------------- 
+        #------------------------------------------------------------------
+        # Bias Activations
+        n=[1.0]
+        (self.input_activation,self.hidden_activation,self.output_activation) \
+            = ( n * self.number_of_inputs, \
+                n * self.number_of_hidden, \
+                n * self.number_of_outputs )
+        #------------------------------------------------------------------
         
-                         
-#------------------------------------------------------------ 
-#-------------- Initiate training data ----------------------                   
+        # Hidden Input and Hidden Output Weights
+        
+        self.IH_WEIGHTS    = populateVector(self.number_of_inputs,\
+                                            self.number_of_hidden)
+
+        self.HO_WEIGHTS    = populateVector(self.number_of_hidden,\
+                                            self.number_of_outputs)
+
+        # Final Values for Change in weights for Momentum   
+        self.input_change  = populateVector(self.number_of_inputs,\
+                                            self.number_of_hidden)
+
+        self.output_change = populateVector(self.number_of_hidden,\
+                                            self.number_of_outputs)
+        
+        #----------------------------------------------------------------------
+        # Random Weight Assigment
+        for i in range(self.number_of_inputs):
+            for j in range(self.number_of_hidden):
+                self.IH_WEIGHTS[i][j] = generateRandBetween(-0.2,0.2)
+
+        for j in range(self.number_of_hidden):
+            for k in range(self.number_of_outputs):
+                self.HO_WEIGHTS[j][k] = generateRandBetween(-2.0,2.0)
+        #----------------------------------------------------------------------
+
+    ###########################################################################
+    # Run FeedForward function for (testing and training) setting 
+    # hidden activations and return output activations
+    ###########################################################################
+
+    def feed_forward(self, inputs):
+        #----------------------------------------------------------------------
+        #Input Activations
+        for i in range(self.number_of_inputs-1):
+            self.input_activation[i] = inputs[i]
+        #----------------------------------------------------------------------
+        #Hidden Activations
+        for j in range(self.number_of_hidden):
+            sumOfHidden = 0.0
             
-#Initialise test DATA Set
-def initiate_data(mlp):
-    print "\n\n---Initialisation---\n"
+            for i in range(self.number_of_inputs):
+                sumOfHidden  = sumOfHidden  + self.input_activation[i] * self.IH_WEIGHTS[i][j]
+                                        
+            self.hidden_activation[j] = activation_function(sumOfHidden)
+        #----------------------------------------------------------------------
+        #Output Activations
+        for k in range(self.number_of_outputs):
+            sumOfOutput = 0.0
+            for j in range(self.number_of_hidden):
+                sumOfOutput = sumOfOutput + self.hidden_activation[j] * self.HO_WEIGHTS[j][k]
+            
+            self.output_activation[k] = activation_function(sumOfOutput)
 
-    #   Pattern 0
-    mlp.training_Input[0][0]  = 1
-    mlp.training_Input[0][1]  = -1
+        #----------------------------------------------------------------------
+        return self.output_activation
 
-    #   Pattern 1
-    mlp.training_Input[1][0]  = -1
-    mlp.training_Input[1][1]  = 1
-
-    #   Pattern 2
-    mlp.training_Input[2][0]  = 1
-    mlp.training_Input[2][1]  = 1
-
-    #   Pattern 3
-    mlp.training_Input[3][0]  = -1
-    mlp.training_Input[3][1]  = -1
-
-    #   Biases
-    mlp.training_Input[0][2]  = 1
-    mlp.training_Input[1][2]  = 1 
-    mlp.training_Input[2][2]  = 1
-    mlp.training_Input[3][2]  = 1
-
-
-    #Real Output for Comparison
-    mlp.training_Output[0] = 1
-    mlp.training_Output[1] = 1
-    mlp.training_Output[2] = -1
+    ###########################################################################
+    # Calculate Output Errors
+    ###########################################################################
     
-#------------------------------------------------------------ 
-#------------------ Show Results ----------------------------
-        
-def show_results(mlp):
-     predictions=[]
-     #-------------------------------------- 
-     for patternN in range(mlp.number_of_tr_patterns):
-        output_hidden(mlp)
-        print "Pattern Number: {0} Actual Value:{1} Neural Net Prediction: {2}"\
-        .format((patternN+1),mlp.training_Output[patternN],mlp.prediction)
-     #-------------------------------------- 
-     pylab.plot(mlp.training_Output)
-     pylab.show()
+    def calculate_output_error(self,targets,delta):
+        #----------------------------------------------------------------------
+        for k in range(self.number_of_outputs):
+            error = targets[k] - self.output_activation[k]
+            delta[k] = (1.0 - math.pow(self.output_activation[k],2)) * error
+        #----------------------------------------------------------------------
+        return delta
 
-#------------------------------------------------------------ 
-#---------------- Calculate Error ---------------------------
+    ###########################################################################
+    # Calculate Hidden Error
+    ###########################################################################
+    
+    def calculate_hidden_error(self,delta):
+        #----------------------------------------------------------------------
+        for j in range(self.number_of_hidden):
+            error = 0.0
+            for k in range(self.number_of_outputs):
+                error = error + delta[k] * self.HO_WEIGHTS[j][k]
+            delta[j] =  (1.0 - math.pow(self.hidden_activation[j],2) ) * error
+        #----------------------------------------------------------------------
+        return delta
 
-def calculate_error(mlp):
-     mlp.error = 0.0;
-     
-     #-------------------------------------- 
-     for i in range (   mlp.number_of_tr_patterns   ):
-        
-        mlp.patNum = i
-        
-        output_hidden(mlp)
-        
-        mlp.error = mlp.error + (   mlp.error_this * mlp.error_this )
-
-     #--------------------------------------        
-     mlp.error = mlp.error / mlp.number_of_tr_patterns
-     mlp.error = Math.sqrt( mlp.error )
-
-#------------------------------------------------------------ 
-#---------------------Run Program----------------------------
-def runProgram(mlp):
-
-    try:
-        epochs=int(raw_input("how many epochs: "))
-        mlp.number_of_epochs=epochs
-        
-        initiate_weights( mlp )
-        
-        initiate_data( mlp ) 
-        #-------------------------------------- 
-        for i in range (mlp.number_of_epochs):
-            #-------------------------------------- 
-            for j in range (mlp.number_of_tr_patterns):
-                mlp.patternN = randomGenerator(mlp.number_of_tr_patterns)
-        
-                output_hidden(mlp)
-
-                change_in_output(mlp)
-
-                change_in_hidden(mlp)
-
-                calculate_error(mlp)
-            #-------------------------------------- 
-            print "|| node : {0} || error : {1} || ".format(i,mlp.error)
-        #-------------------------------------- 
-        show_results(mlp)
-                   
-    except Exception,err:
-        print err
-        exit()
-
-#------------------------------------------------------------ 
-#---------------------  MAIN  -------------------------------
-
-if __name__== "__main__":
-    #Create Multi-Layer Perceptron Class
-    mlp=MLP()
-
-    #Initiate Program Loop in MAIN
-    while(True):
-        
-        print "-------------------------------------------"
-        print "-------------------------------------------"
-        print "1. Run Program"
-        print "2. Exit"
-        print "-------------------------------------------"
-        print "-------------------------------------------"
-        print "-------------------------------------------"
-
-        try:
-            execute=int(raw_input("Option: "))
-            if(execute==1):
-                runProgram(mlp)
-
-            #Exit on anything  not 1!!!
-            else:
-                exit()
-                
-        #Exit on Exception (Type Error)
-        except Exception,err:
-            print "Error"
+    ###########################################################################
+    # Update Hiddden Output weights
+    ###########################################################################
+    
+    def update_HO(self,deltas):
+        #----------------------------------------------------------------------
+        for j in range(self.number_of_hidden):
+            for k in range(self.number_of_outputs):
+                change = deltas[k] * self.hidden_activation[j]
+                self.HO_WEIGHTS[j][k] = self.HO_WEIGHTS[j][k] + self.learning_rate * change + self.momentum * self.output_change[j][k]
+                self.output_change[j][k] = change
+        #----------------------------------------------------------------------
+    
+    ###########################################################################
+    # Update Input Hiddden weights
+    ###########################################################################
+    
+    def update_IH(self,deltas):
+        #----------------------------------------------------------------------
+        for i in range(self.number_of_inputs):
+            for j in range(self.number_of_hidden):
+                change = deltas[j]*self.input_activation[i]
+                self.IH_WEIGHTS[i][j] = self.IH_WEIGHTS[i][j] + self.learning_rate * change + self.momentum * self.input_change[i][j]
+                self.input_change[i][j] = change
+        #----------------------------------------------------------------------
+    
+    ###########################################################################
+    #   Back-Propogation function to update IH,HO and 
+    #   Delta weights and return error calculation
+    ###########################################################################
+    
+    def backPropagate(self, targets):
+        #----------------------------------------------------------------------
+        if len(targets) != self.number_of_outputs:
+            print "Cannot create Outputs, targets size doesnt equal outputs"
             exit()
-#------------------------------------------------------------ 
-#------------------------------------------------------------
+        #----------------------------------------------------------------------
+        #Calculate Error 
+        outputDELTA = [0.0] * self.number_of_outputs
+        outputDELTA = self.calculate_output_error(targets,outputDELTA)
+        #----------------------------------------------------------------------
+        # Calculate Hidden Error
+        hiddenDELTA = [0.0] * self.number_of_hidden
+        hiddenDELTA = self.calculate_hidden_error(hiddenDELTA)
+        #----------------------------------------------------------------------
+        #Update Output Hidden Weights
+        self.update_HO(outputDELTA)
+        #----------------------------------------------------------------------
+        #Update Input Hidden Weights
+        self.update_IH(hiddenDELTA)
+        #----------------------------------------------------------------------
+        #Calculate Errors
+        error = 0.0
+        for k in range(len(targets)):
+            sq_rtError=targets[k]-self.output_activation[k]
+
+            #Root Mean Squared Error
+            error = error + (  math.pow(sq_rtError,2) / 2 )
+        #----------------------------------------------------------------------
+        return error
+
+    ###########################################################################
+    #   With Hidden and Output Wieghts set and errors found
+    #   run test data through forward pass function to output predictions.
+    ###########################################################################
+   
+    def TEST(self, examples):
+        #----------------------------------------------------------------------
+        #Tabulate Answers
+        plot={}
+        plot["Prediction"]=[]
+        plot["Actual"]=[]
+        #----------------------------------------------------------------------
+        #Node count for outputting example number
+        node=0
+        #----------------------------------------------------------------------
+        for inputObj in examples:
+
+            #----------------------------------------------------------------------
+            # Initiate Feed Foward and find predictions 
+            inputNodes=inputObj[0]
+            predictionForNode=self.feed_forward( inputNodes )
+
+            #Return data to original size
+            output_inputNodes = np.array(inputNodes) * self.maximumV
+            output_predictionForNode = self.maximumV * np.array(predictionForNode)
+            #----------------------------------------------------------------------
+            
+            #Actual Values for data print out
+            actualValues=inputObj[1]
+            output_actualValues = self.maximumV * np.array(actualValues)
+            #----------------------------------------------------------------------
+            
+            #Plotting Data for graph to compare predictions and actual data
+            plot["Prediction"].append( self.maximumV * np.array(predictionForNode) )
+            plot["Actual"].append( self.maximumV * np.array(actualValues) )
+
+            #----------------------------------------------------------------------
+
+            #Print Formatted Data
+            print "________________________________________________"
+            print "________________________________________________"
+            print "Test Example: {0}".format(node+1)
+            print "[",
+            for i in range(len(output_inputNodes)):
+                print "{0}".format(output_inputNodes[i]),
+            print "] \nActual={0} Prediction={1}".format(output_actualValues[0],output_predictionForNode[0])
+           
+            node+=1
+        #----------------------------------------------------------------------
+        #Plot Actual against predictions
+        smooth_plot( plot["Actual"] , plot["Prediction"] )
+        #----------------------------------------------------------------------
     
+
+    ###########################################################################
+    # Run Training input into backpropagation algorithm to find error 
+    # calculations.
+    ###########################################################################
+    
+    def TRAIN_WITH(self, examples, epochs):
+        #----------------------------------------------------------------------
+        #Print formatted Network Configuration
+        print \
+"________________________________________________"
+        print "\t\tNeural Network\n\
+________________________________________________\n\
+Epochs = {0}\n\
+Hidden = {1}\n\
+Outputs = {2}\n\
+Examples = {3}\n\
+Inputs = {4}\n\
+Learning Rate = {5}\n\
+Momentum = {6}".format(epochs, \
+                self.number_of_hidden,\
+                self.number_of_outputs, \
+                len(examples),\
+                self.number_of_inputs, \
+                self.learning_rate, \
+                self.momentum)
+        #----------------------------------------------------------------------
+        # Main Execution of Training (print errors) 
+        print "------------------------------------------------"
+        print " Error Calculations"
+        print "------------------------------------------------"
+        errors=[]
+        for epoch in range(epochs):
+            error = 0.0
+            
+            for obj in examples:
+                inputs = obj[0]                 #Training Input
+                targets = obj[1]                #Training Output *Predictions
+                self.feed_forward(inputs)       #Forward Pass Function
+                backPropagationValue=self.backPropagate(targets) #Back Propogation Function
+                error = error + backPropagationValue #Update Error
+            
+            
+            #Show epoch every ...
+            if epoch % (epochs/100) == 0:
+                errors.append(error)
+                print "[ Epoch:{0}\tError = {1} ]"\
+                .format(epoch,error) 
+        #----------------------------------------------------------------------
+        plot_errors(errors)
+
+###########################################################################
+#   Plot graphical view of errors
+###########################################################################
+
+def plot_errors(error):
+    #----------------------------------------------------------------------
+    y1=np.array(error)
+    x1=np.array( vector( len(error) ) )
+    x_smooth1=np.linspace(x1.min(),x1.max(),100)
+    y_smooth1=spline(x1,y1,x_smooth1)
+    #----------------------------------------------------------------------
+    plt.title("Errors")
+    p2,=plt.plot(x_smooth1,y_smooth1,'r') 
+    plt.ylabel('Error Value')
+    #----------------------------------------------------------------------
+    plt.show() 
+
+###########################################################################
+#   Take Output readings and Prediction readings and plot 
+#   against each other.
+###########################################################################
+def smooth_plot(actual,pred):
+    
+    #----------------------------------------------------------------------
+    y1=np.array(actual)
+    x1=np.array( vector( len(actual) ) )
+    x_smooth1=np.linspace(x1.min(),x1.max(),100)
+    y_smooth1=spline(x1,y1,x_smooth1)
+    #----------------------------------------------------------------------
+    
+    y2=np.array(pred)
+    x2=np.array( vector( len(pred) ) )
+    x_smooth2=np.linspace(x2.min(),x2.max(),100)
+    y_smooth2=spline(x2,y2,x_smooth2)
+    #----------------------------------------------------------------------
+    # Plotting Actual Test Data (RED)
+    plt.subplot(5,1,1)
+    plt.title("Actual")
+    p2,=plt.plot(x_smooth1,y_smooth1,'r')
+    plt.ylabel('Actual Reading')  
+    #----------------------------------------------------------------------
+    # Plotting Prediction Test Data (BLUE)
+    plt.subplot(5,1,3)
+    plt.title("Prediction")
+    p1,=plt.plot(x_smooth2,y_smooth2,'b') 
+    plt.ylabel('Prediction Reading')  
+    #----------------------------------------------------------------------
+    plt.subplot(5,1,5)
+    plt.title("Comparison")
+    p3,=plt.plot(x_smooth2,y_smooth2,'b')
+    p4,=plt.plot(x_smooth1,y_smooth1,'r')
+    #----------------------------------------------------------------------
+    plt.show()
+
+
+###########################################################################
+#   Return configured data to use in Neural Network with 
+#   Training and Testing.
+###########################################################################
+def createConfiguredData(start,end,data,maximumV):
+    #----------------------------------------------------------------------
+    # Create Empty Array
+    pat=[]
+    #----------------------------------------------------------------------
+    #Take Data from Document starting at (start) and ending at (end)
+    for i in range(start,end):
+        
+        innerArray1,innerArray2,innerArray3 = ([],[],[])
+        #----------------------------------------------------------------------
+        #Take from each column
+        for j in range(8):
+            inputNum = (data.getBy(str(j))[i]) / maximumV
+            innerArray1.append(inputNum)
+        #----------------------------------------------------------------------
+        #Output (Actual to Compare to Prediction)
+        outputNum = ( data.getBy("8")[i] ) / maximumV
+        
+        #Populate Inner arrays
+        innerArray2.append(outputNum)
+        innerArray3.append(innerArray1)
+        innerArray3.append(innerArray2)
+        
+        pat.append(innerArray3)
+    #----------------------------------------------------------------------
+
+    return pat
+
+###########################################################################
+#   Initiate Program 
+###########################################################################
+def execute_MLP():
+    #----------------------------------------------------------------------
+    # Call class Data (populate data structure)
+    
+    data = Data()
+    maximumV=4800
+    #----------------------------------------------------------------------
+    # Create Training and Test Data from CWKData.xlsx
+    
+    TRAINING_DATA=createConfiguredData(1,51,data,maximumV) #TRAINING DATA
+    TESTING_DATA=createConfiguredData(51,65,data,maximumV) #TEST DATA
+    
+    #----------------------------------------------------------------------
+    # Assign lengths
+    
+    inputs=len(TRAINING_DATA[0][0])
+    hidden=len(TRAINING_DATA[0][0])
+    outputs=len(TRAINING_DATA[0][1])
+    #----------------------------------------------------------------------
+    # Create MultiLayer Perceptron Network
+    
+    Network = NETWORK ( inputs, hidden, outputs, maximumV )    
+
+    Network.learning_rate=0.9
+    Network.momentum=0.5
+    #----------------------------------------------------------------------
+    # Train Network with 2000 epochs and split into percentage
+    
+    Network.TRAIN_WITH( TRAINING_DATA, 5000)
+    Network.TEST( TESTING_DATA )
+
+
+if __name__ == '__main__':
+    execute_MLP()
