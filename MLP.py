@@ -10,6 +10,8 @@
 #Standard Libraries for calculations
 import random
 import math
+import sys
+
 #--------------------------------------------------------------------------
 #Data Class for Neural Network use
 from Data import *
@@ -19,15 +21,13 @@ import pylab
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import spline
-import datetime
 
+#Package to neatly tabulate 2 Dimensional arrays
 from tabulate import *
 
 #--------------------------------------------------------------------------
 def savePlot():
-    i = datetime.datetime.now()
-    pylab.savefig('Figure_'+i.isoformat()+"_graph.png")
-    plt.ioff()
+    pylab.savefig('Graph.png')
 
 ###########################################################################
 # Populate an array with indexes (graphing)
@@ -39,9 +39,6 @@ def vector(n):
         vector.append(i)
     return vector
 
-
-#--------------------------------------------------------------------------
-
 ###########################################################################
 # Populate 2d array with length outerNum and inner Length innerNum
 ###########################################################################
@@ -51,7 +48,7 @@ def populateVector(outerNum, innerNum):
     for i in range(outerNum):
         vector.append([0.0]*innerNum)
     return vector
-#--------------------------------------------------------------------------
+
 ###########################################################################
 # Return hyperbolic tangent
 ########################################################################### 
@@ -60,20 +57,16 @@ def activation_function(n):
     #net= -1 * n
     #return 1 / ( 1 + math.exp(net) )
     return math.tanh(n)
+
 #--------------------------------------------------------------------------
 #Initiate Random Generator
 random.seed(0)
 #--------------------------------------------------------------------------
+
 ###########################################################################
 #                         ------------------------
-#                         | Neural Network Class |
+#                         |     NETWORK class    |
 #                         ------------------------
-#                         @param maximumV
-#                         @param number_of_hidden
-#                         @param number_of_inputs
-#                         @param number_of_outputs
-#                         
-#
 ###########################################################################
 class NETWORK:
     def __init__(self, number_of_inputs, number_of_hidden, \
@@ -137,11 +130,11 @@ class NETWORK:
         print "\nWeights Initialised\n"
         for i in range(self.number_of_inputs):
             for j in range(self.number_of_hidden):
-                self.IH_WEIGHTS[i][j] = self.generateRandFor("IH",i,j)
+                self.IH_WEIGHTS[i][j] = self.generateRandFor("IH")
 
         for j in range(self.number_of_hidden):
             for k in range(self.number_of_outputs):
-                self.HO_WEIGHTS[j][k] = self.generateRandFor("HO",j,k)
+                self.HO_WEIGHTS[j][k] = self.generateRandFor("HO")
         #----------------------------------------------------------------------
 
     ###########################################################################
@@ -275,6 +268,7 @@ class NETWORK:
             
         #----------------------------------------------------------------------
         return error
+    
     ###########################################################################
     #   With Hidden and Output Wieghts set and errors found
     #   run test data through forward pass function to output predictions.
@@ -310,7 +304,7 @@ class NETWORK:
             #Actual Values for data print out
             actualValues             = inputObj[1]
             output_actualValues      = np.array(actualValues) * self.maximumV  
-            #----------------------------------------------------------------------
+            #------------------------------------------------------------------
             
             #Plotting Data for graph to compare predictions and output data
             plot["Prediction"].append(\
@@ -319,18 +313,18 @@ class NETWORK:
             plot["Actual"].append(\
                         np.array(actualValues)        * self.maximumV)
 
-            #----------------------------------------------------------------------
+            #------------------------------------------------------------------
 
             #Print Formatted Data
-            print "\n\t# Test Example: {0}".format(node+1)
+            print "# Test Example: {0}".format(node+1)
             print "________________________________________________"
-            for i in range(len(output_inputNodes)):
-                print "\t{0}".format(output_inputNodes[i])
-            print "________________________________________________"
-            print "\nOutput={0} Prediction={1}".format(\
+            #for i in range(len(output_inputNodes)):
+                #print "\t{0}".format(output_inputNodes[i])
+            #print "________________________________________________"
+            print "Output={0} Prediction={1}".format(\
                                                 output_actualValues[0],\
                                                 output_predictionForNode[0])
-           
+            print "________________________________________________\n"
             node+=1
         #----------------------------------------------------------------------
         #Plot Actual against predictions
@@ -379,15 +373,16 @@ class NETWORK:
                 #Update Error
                 error += backPropagationValue  
                 
-
+            errors.append(error)
             #Show epoch every every 1 percent...
             if epoch % (epochs/100) == 0:
-                errors.append(error)
+                
                 print "\t({0}) := ({1}) "\
                 .format(epoch,error)
         #----------------------------------------------------------------------
        
-        print "\t# Finished Training"
+        print "\n\t# Finished Training\n\n"
+        self.save_errors(errors)
         
     
         
@@ -395,28 +390,54 @@ class NETWORK:
     ###########################################################################
     #   Generate Random Numbers for Hidden and Output Weights
     ###########################################################################
-    def generateRandFor(self,option,index1,index2):
+    def generateRandFor(self,option,):
+       
         # Return Random Number ( a <= n < b )
 
         if option == "IH":
             a = -2.0 / self.number_of_inputs
             b = 2.0 / self.number_of_inputs
-
             number = (b - a) * random.random() + a
-            #print "\tIH_Weight[{0}][{1}] = {2}".format(index1,index2,number)
             return number
             
         else:
-            a = -2.0 / self.number_of_inputs
+            a = -2.0 / self.number_of_hidden
             b = 2.0 / self.number_of_hidden
-
             number = (b - a) * random.random() + a
-            #print "\tHO_Weight[{0}][{1}] = {2}".format(index1,index2,number)
             return number
 
+    ###########################################################################
+    #   Save RMS Errors to File errors.txt
+    ###########################################################################    
+    def save_errors(self,errors):
+        
+        fileName="errors.txt"
+        errorsFile= open(fileName, "w")
+        errorsFile.close()
+
+        #Now created rewrite
+        errorsFile= open(fileName, "w")
+
+        output=""
+
+        output+="\n----------------------------------------\n"
+        output+="# Errors"
+        output+="\n----------------------------------------\n"
+
+        for i in range(len(errors)):
+            output+=("epoch: "+str(i)+" = "+str(errors[i]))
+            output+="\n"
+
+        errorsFile.write(output)
+
+        errorsFile.close()
+
+    ###########################################################################
+    #   Save Weights to File weights_activations.txt
+    ###########################################################################
     def save_weights(self):
-        i = datetime.datetime.now()
-        fileName="WEIGHTS_"+i.isoformat()+"_graph.txt"
+        
+        fileName="weights_activations.txt"
         weightsFile= open(fileName, "w")
         weightsFile.close()
 
@@ -424,34 +445,63 @@ class NETWORK:
         weightsFile= open(fileName, "w")
 
         output=""
-        output+="\n________________________________________________\n"
-        output+="\t# IH Weights\n"
+        output+="-------------------------\n"
+        output+="# IH Weights"
+        output+="\n-------------------------\n"
+        output += tabulate( self.IH_WEIGHTS)
         
-        for i in range(len(self.IH_WEIGHTS)):
-            output+="\n________________________________________________\n"
-            output+="Row {0}\n".format(i)
-            
-            for j in range(len(self.IH_WEIGHTS[i])):
-                output+="{0}\n".format(self.IH_WEIGHTS[i][j])
-            
-            output+="\n________________________________________________\n"
-
-        output+="\n________________________________________________\n"
-        output+="\t# HO Weights\n"
+        output+="\n-------------------------\n"
+        output+="# HO Weights"
+        output+="\n-------------------------\n"
+        output += tabulate( self.HO_WEIGHTS)
         
-        for i in range(len(self.HO_WEIGHTS)):
-            output+="\n________________________________________________\n"
-            output+="Row {0}\n".format(i)
-            
-            for j in range(len(self.HO_WEIGHTS[i])):
-                output+="{0}\n".format(self.HO_WEIGHTS[i][j])
-            
-            output+="\n________________________________________________\n"
+        
+        output+="\n-------------------------\n"
+        output+="# Input Final Changes"
+        output+="\n-------------------------\n"
+        output+= tabulate( self.input_change)
+        
+        
+        output+="\n-------------------------\n"
+        output+="# Output Final Changes"
+        output+="\n-------------------------\n"
+        output+= tabulate( self.output_change)
 
+        output+="\n-------------------------\n"
+        output+="# Input Activations"
+        output+="\n-------------------------\n"
+        
+
+        output+="---------------------\n"
+        for i in self.input_activation:
+            output+=str(i)
+            output+="\n"
+        output+="\n---------------------\n"
+        
+        output+="\n-------------------------\n"
+        output+="# Output Activations"
+        output+="\n-------------------------\n"
+        
+        output+="---------------------\n"
+        for i in self.output_activation:
+            output+=str(i)
+            output+="\n"
+        output+="\n---------------------\n"
+
+        output+="\n-------------------------\n"
+        output+="# Hidden Activations"
+        output+="\n-------------------------\n"
+        
+        output+="---------------------\n"
+        for i in self.hidden_activation:
+            output+=str(i)
+            output+="\n"
+        output+="\n---------------------\n"
+        
         weightsFile.write(output)
         weightsFile.close()
 
-        print tabulate(IH_WEIGHTS)
+        
 
 
 #--------------------------------------------------------------------------
@@ -465,7 +515,6 @@ class NETWORK:
 ###########################################################################
 #   Plot graphical view of errors
 ###########################################################################
-
 def plot_errors(error):
     #----------------------------------------------------------------------
     y1=np.array(error)
@@ -552,7 +601,7 @@ def createConfiguredData(start,end,data,maximumV):
 ###########################################################################
 #                       Initiate Program 
 ###########################################################################
-def execute_MLP():
+def execute_MLP(trainingAmount,testingStart):
     #----------------------------------------------------------------------
     # Call class Data (populate data structure)
     
@@ -560,10 +609,10 @@ def execute_MLP():
     maximumV=4800
     #----------------------------------------------------------------------
     # Create Training and Test Data from CWKData.xlsx
+    # Take 80% of data (400 epochs as default) and leave rest for testing
     
-    TRAINING_DATA=createConfiguredData(1,400,data,maximumV) #TRAINING DATA
-    
-    
+    TRAINING_DATA=createConfiguredData(1,trainingAmount,data,maximumV) #TRAINING DATA
+
     #----------------------------------------------------------------------
     # Assign lengths
     
@@ -578,45 +627,63 @@ def execute_MLP():
     Network.learning_rate=0.9
     Network.momentum=0.5
     #----------------------------------------------------------------------
-    # Train Network with 2000 epochs and split into percentage
+    # Train Network with 400 training examples (> 100 epochs) and (> 10 training patterns)
 
-    start=0
+    #Start Testing data at 0 or ....
+    start=testingStart
     while True:
         print "________________________________________________"
-        option=raw_input("\nRun Program y/n? ")
+        option=raw_input("\nRun MLP program y/n? ")
 
         if option == "y":
             print "________________________________________________"
-            trainingEpochs=int(raw_input("\nHow Many Epochs: "))
+            #Epoch Input
+            trainingEpochs=int(raw_input("\nHow many epochs: "))
 
             if(trainingEpochs < 100):
                 trainingEpochs = 100
 
             print "________________________________________________"
-            trainingExamples=int(raw_input("\nHow Many Examples: "))
+            #Training samples
+            trainingExamples=int(raw_input("\nNo. of test patterns: "))
 
             if(trainingExamples < 10):
                 trainingExamples = 10
 
             print "________________________________________________"
 
-            TESTING_DATA=createConfiguredData(start,start+trainingExamples,data,maximumV)
+            #Create Training data given input
+            TESTING_DATA = createConfiguredData(start,start\
+                    + trainingExamples , data , maximumV )
 
-            #EPOCHS SET
+            #------------------------------------------------------------------
+            #Initiate Neural Network Training and Testing
             Network.epochs=trainingEpochs
             
+            #Train Network
             Network.TRAIN_WITH( TRAINING_DATA, trainingEpochs)
+            
+            #Test Network
             Network.TEST( TESTING_DATA )
 
+            #Increment start index for next testing sample
             start+=trainingExamples
+
+            #Save Weights to File
             Network.save_weights()
-            
+            #------------------------------------------------------------------
+        
+        #Exit 
         else:
             exit()
 
-    
-
-
-
 if __name__ == '__main__':
-    execute_MLP()
+    if len(sys.argv) > 2:
+
+        trainingAmount=int(sys.argv[1])
+        testingStart=int(sys.argv[2])
+
+        execute_MLP(trainingAmount,testingStart)
+    else:
+        #Default
+        execute_MLP(400,400)
