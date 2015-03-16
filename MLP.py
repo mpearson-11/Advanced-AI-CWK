@@ -19,6 +19,8 @@ import pylab
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import spline
+
+
 #--------------------------------------------------------------------------
 
 ###########################################################################
@@ -51,7 +53,9 @@ def activation_function(n):
     #return 1 / ( 1 + math.exp(net) )
     return math.tanh(n)
 #--------------------------------------------------------------------------
-
+#Initiate Random Generator
+random.seed(0)
+#--------------------------------------------------------------------------
 ###########################################################################
 #                         ------------------------
 #                         | Neural Network Class |
@@ -63,10 +67,6 @@ def activation_function(n):
 #                         
 #
 ###########################################################################
-
-#Initiate Random Generator
-random.seed(0)
-
 class NETWORK:
     def __init__(self, number_of_inputs, number_of_hidden, \
                        number_of_outputs , maximumV ):
@@ -114,24 +114,24 @@ class NETWORK:
         print "________________________________________________"
         print "\t\tNeural Network\n"
         print "________________________________________________"
-        print "Hidden = {0}\nOutputs = {1}\nInputs = {2} + 1 bias"\
+        print "\tHidden = {0}\n\tOutputs = {1}\n\tInputs = {2} + 1 bias"\
         .format(self.number_of_hidden,\
                     self.number_of_outputs, \
                     self.number_of_inputs-1)
 
-        print "Learning Rate = {0}\nMomentum = {1}"\
+        print "\tLearning Rate = {0}\n\tMomentum = {1}"\
         .format(    self.learning_rate, \
                     self.momentum           )        
         #----------------------------------------------------------------------
         # Random Weight Assigment
         print "________________________________________________"
-        print "# Initialising Hidden Weights\n"
+        print "\t# Initialising Hidden Weights\n"
         for i in range(self.number_of_inputs):
             for j in range(self.number_of_hidden):
                 self.IH_WEIGHTS[i][j] = self.generateRandFor("IH",i,j)
 
         print "________________________________________________"
-        print "# Initialising Output Weights\n"
+        print "\t# Initialising Output Weights\n"
         for j in range(self.number_of_hidden):
             for k in range(self.number_of_outputs):
                 self.HO_WEIGHTS[j][k] = self.generateRandFor("HO",j,k)
@@ -259,17 +259,15 @@ class NETWORK:
         #----------------------------------------------------------------------
         #Calculate Errors
         error = 0.0
-        outer_error = 0.0
+        
         for k in range(len(targets)):
             sq_rtError=targets[k]-self.output_activation[k]
 
             #Root Mean Squared Error
             error += (  math.pow(sq_rtError,2) / 2 )
-            outer_error += sq_rtError
-
+            
         #----------------------------------------------------------------------
-        return (error,outer_error)
-
+        return error
     ###########################################################################
     #   With Hidden and Output Wieghts set and errors found
     #   run test data through forward pass function to output predictions.
@@ -281,6 +279,8 @@ class NETWORK:
         plot={}
         plot["Prediction"]=[]
         plot["Actual"]=[]
+
+        
         #----------------------------------------------------------------------
         #Node count for outputting example number
         node=0
@@ -315,12 +315,12 @@ class NETWORK:
             #----------------------------------------------------------------------
 
             #Print Formatted Data
+            print "\n\t# Test Example: {0}".format(node+1)
             print "________________________________________________"
-            print "\t# Test Example: {0}".format(node+1)
-            print "[",
             for i in range(len(output_inputNodes)):
-                print "{0}".format(output_inputNodes[i]),
-            print "] \nOutput={0} Prediction={1}".format(\
+                print "\t{0}".format(output_inputNodes[i])
+            print "________________________________________________"
+            print "\nOutput={0} Prediction={1}".format(\
                                                 output_actualValues[0],\
                                                 output_predictionForNode[0])
            
@@ -341,14 +341,15 @@ class NETWORK:
         #----------------------------------------------------------------------
         # Main Execution of Training (print errors) 
         print "________________________________________________"
-        print "\n------------------------------------------------"
-        print "# Training Network"
-        print "------------------------------------------------"
-        print "Epochs = {0}\nTraining Examples = {1}"\
+       
+        print "\t# Training Network\n"
+        
+        print "\tEpochs = {0}\n\tTraining Examples = {1}"\
                .format(epochs,len(examples))
-        print "Show every {0} epochs"\
+        print "\tShow every {0} epochs "\
                .format(epochs/100)
         print "________________________________________________"
+        print "\n\t(epoch number) := (error)\n"
 
         errors=[]
         for epoch in range(epochs):
@@ -365,26 +366,28 @@ class NETWORK:
                 self.feed_forward(inputs)             
                 
                 #Back Propogation Function
-                (backPropagationValue,real)=\
+                backPropagationValue=\
                     self.backPropagate(targets)       
                 
                 #Update Error
                 error += backPropagationValue  
-                outer_error += real
+                
 
             #Show epoch every every 1 percent...
             if epoch % (epochs/100) == 0:
                 errors.append(error)
-                print "epoch:{0} > [ Error = {1} ]"\
+                print "\t({0}) := ({1}) "\
                 .format(epoch,error)
-                #print " [ Epoch:{0}\tError = {1}\tReal Error = {2} ]"\
-                #.format(epoch,error,real) 
         #----------------------------------------------------------------------
-        print "\n------------------------------------------------"
-        print "# Finished Training"
-        print "------------------------------------------------"
-        #plot_errors(errors)
-
+       
+        print "\t# Finished Training"
+        
+    
+        
+    
+    ###########################################################################
+    #   Generate Random Numbers for Hidden and Output Weights
+    ###########################################################################
     def generateRandFor(self,option,index1,index2):
         # Return Random Number ( a <= n < b )
 
@@ -392,17 +395,48 @@ class NETWORK:
             a = -2.0 / self.number_of_inputs
             b = 2.0 / self.number_of_inputs
             number = (b - a) * random.random() + a
-            print "IH_Weight[{0}][{1}] = {2}".format(index1,index2,number)
+            print "\tIH_Weight[{0}][{1}] = {2}".format(index1,index2,number)
             return number
             
         else:
             a = -2.0 / self.number_of_outputs
             b = 2.0 / self.number_of_outputs
             number = (b - a) * random.random() + a
-            print "HO_Weight[{0}][{1}] = {2}".format(index1,index2,number)
+            print "\tHO_Weight[{0}][{1}] = {2}".format(index1,index2,number)
             return number
 
+    def show_weights(self):
         
+        print "\n________________________________________________"
+        print "\t# IH Weights\n"
+        
+        for i in range(len(self.IH_WEIGHTS)):
+            print "-------------------------"
+            print "Row {0}".format(i)
+            
+            for j in range(len(self.IH_WEIGHTS[i])):
+                print "{0}".format(self.IH_WEIGHTS[i][j])
+            
+            print "\n-------------------------"
+
+        print "\n________________________________________________"
+        print "\t# HO Weights"
+        
+        for i in range(len(self.HO_WEIGHTS)):
+            print "-------------------------"
+            print "Row {0}".format(i)
+            
+            for j in range(len(self.HO_WEIGHTS[i])):
+                print "{0}".format(self.HO_WEIGHTS[i][j]),
+            
+            print "\n-------------------------"
+
+
+#--------------------------------------------------------------------------
+###########################################################################
+#                       END OF NEURAL NETWORK CLASS
+##########################################################################
+#--------------------------------------------------------------------------
         
        
 
@@ -429,6 +463,9 @@ def plot_errors(error):
 ###########################################################################
 def smooth_plot(actual,pred):
     
+    fig = plt.figure()
+    ax = fig.add_subplot(1,1,1)
+    plt.ion()
     #----------------------------------------------------------------------
     y1=np.array(actual)
     x1=np.array( vector( len(actual) ) )
@@ -441,24 +478,12 @@ def smooth_plot(actual,pred):
     x_smooth2=np.linspace(x2.min(),x2.max(),100)
     y_smooth2=spline(x2,y2,x_smooth2)
     #----------------------------------------------------------------------
-    # Plotting Actual Test Data (RED)
-    plt.subplot(5,1,1)
-    plt.title("Actual")
-    p2,=plt.plot(x_smooth1,y_smooth1,'r')
-    plt.ylabel('Actual Reading')  
+    plt.title("Actual = RED, Prediction = BLUE ")
+    ax.plot(x_smooth2,y_smooth2,'b')
+    ax.plot(x_smooth1,y_smooth1,'r')
     #----------------------------------------------------------------------
-    # Plotting Prediction Test Data (BLUE)
-    plt.subplot(5,1,3)
-    plt.title("Prediction")
-    p1,=plt.plot(x_smooth2,y_smooth2,'b') 
-    plt.ylabel('Prediction Reading')  
-    #----------------------------------------------------------------------
-    plt.subplot(5,1,5)
-    plt.title("Comparison")
-    p3,=plt.plot(x_smooth2,y_smooth2,'b')
-    p4,=plt.plot(x_smooth1,y_smooth1,'r')
-    #----------------------------------------------------------------------
-    plt.show()
+   
+    fig.show()
 
 
 ###########################################################################
@@ -479,8 +504,6 @@ def createConfiguredData(start,end,data,maximumV):
         for j in range(8):
             inputNum = (data.getBy(str(j))[i]) / maximumV
             innerArray1.append(inputNum)
-
-        #innerArray1.append(1)
         #----------------------------------------------------------------------
         #Output (Actual to Compare to Prediction)
         outputNum = ( data.getBy("8")[i] ) / maximumV
@@ -507,8 +530,8 @@ def execute_MLP():
     #----------------------------------------------------------------------
     # Create Training and Test Data from CWKData.xlsx
     
-    TRAINING_DATA=createConfiguredData(3,83,data,maximumV) #TRAINING DATA
-    TESTING_DATA=createConfiguredData(83,103,data,maximumV) #TEST DATA
+    TRAINING_DATA=createConfiguredData(1,400,data,maximumV) #TRAINING DATA
+    
     
     #----------------------------------------------------------------------
     # Assign lengths
@@ -525,9 +548,29 @@ def execute_MLP():
     Network.momentum=0.5
     #----------------------------------------------------------------------
     # Train Network with 2000 epochs and split into percentage
-    
-    Network.TRAIN_WITH( TRAINING_DATA, 4000)
-    Network.TEST( TESTING_DATA )
+
+    start=0
+    while True:
+        print "________________________________________________"
+        option=raw_input("\nRun Program y/n? ")
+
+        if option == "y":
+            print "________________________________________________"
+            trainingEpochs=int(raw_input("\nHow Many Epochs: "))
+            print "________________________________________________"
+            trainingExamples=int(raw_input("\nHow Many Examples: "))
+            print "________________________________________________"
+
+            TESTING_DATA=createConfiguredData(start,start+trainingExamples,data,maximumV)
+
+            Network.TRAIN_WITH( TRAINING_DATA, trainingEpochs)
+            Network.TEST( TESTING_DATA )
+
+            start+=trainingExamples
+        else:
+            exit()
+
+    print Network.show_weights()
 
 
 if __name__ == '__main__':
