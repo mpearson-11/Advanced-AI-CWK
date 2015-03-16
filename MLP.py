@@ -611,7 +611,6 @@ def execute_MLP():
             start+=trainingExamples
             Network.save_weights()
             
-
         else:
             exit()
 
