@@ -19,9 +19,15 @@ import pylab
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import spline
+import datetime
 
+from tabulate import *
 
 #--------------------------------------------------------------------------
+def savePlot():
+    i = datetime.datetime.now()
+    pylab.savefig('Figure_'+i.isoformat()+"_graph.png")
+    plt.ioff()
 
 ###########################################################################
 # Populate an array with indexes (graphing)
@@ -32,6 +38,8 @@ def vector(n):
     for i in range(n):
         vector.append(i)
     return vector
+
+
 #--------------------------------------------------------------------------
 
 ###########################################################################
@@ -71,6 +79,7 @@ class NETWORK:
     def __init__(self, number_of_inputs, number_of_hidden, \
                        number_of_outputs , maximumV ):
         
+        self.epochs=0
         #------------------------------------------------------------------
         #   Neural Network Settings
 
@@ -112,7 +121,7 @@ class NETWORK:
         #----------------------------------------------------------------------
         #Print formatted Network Configuration
         print "________________________________________________"
-        print "\t\tNeural Network\n"
+        print "\tNeural Network\n"
         print "________________________________________________"
         print "\tHidden = {0}\n\tOutputs = {1}\n\tInputs = {2} + 1 bias"\
         .format(self.number_of_hidden,\
@@ -124,14 +133,12 @@ class NETWORK:
                     self.momentum           )        
         #----------------------------------------------------------------------
         # Random Weight Assigment
-        print "________________________________________________"
-        print "\t# Initialising Hidden Weights\n"
+        
+        print "\nWeights Initialised\n"
         for i in range(self.number_of_inputs):
             for j in range(self.number_of_hidden):
                 self.IH_WEIGHTS[i][j] = self.generateRandFor("IH",i,j)
 
-        print "________________________________________________"
-        print "\t# Initialising Output Weights\n"
         for j in range(self.number_of_hidden):
             for k in range(self.number_of_outputs):
                 self.HO_WEIGHTS[j][k] = self.generateRandFor("HO",j,k)
@@ -327,7 +334,7 @@ class NETWORK:
             node+=1
         #----------------------------------------------------------------------
         #Plot Actual against predictions
-        smooth_plot( plot["Actual"] , plot["Prediction"] )
+        smooth_plot( plot["Actual"] , plot["Prediction"], self.epochs )
         #----------------------------------------------------------------------
     
 
@@ -394,42 +401,57 @@ class NETWORK:
         if option == "IH":
             a = -2.0 / self.number_of_inputs
             b = 2.0 / self.number_of_inputs
+
             number = (b - a) * random.random() + a
-            print "\tIH_Weight[{0}][{1}] = {2}".format(index1,index2,number)
+            #print "\tIH_Weight[{0}][{1}] = {2}".format(index1,index2,number)
             return number
             
         else:
-            a = -2.0 / self.number_of_outputs
-            b = 2.0 / self.number_of_outputs
+            a = -2.0 / self.number_of_inputs
+            b = 2.0 / self.number_of_hidden
+
             number = (b - a) * random.random() + a
-            print "\tHO_Weight[{0}][{1}] = {2}".format(index1,index2,number)
+            #print "\tHO_Weight[{0}][{1}] = {2}".format(index1,index2,number)
             return number
 
-    def show_weights(self):
-        
-        print "\n________________________________________________"
-        print "\t# IH Weights\n"
+    def save_weights(self):
+        i = datetime.datetime.now()
+        fileName="WEIGHTS_"+i.isoformat()+"_graph.txt"
+        weightsFile= open(fileName, "w")
+        weightsFile.close()
+
+        #Now created rewrite
+        weightsFile= open(fileName, "w")
+
+        output=""
+        output+="\n________________________________________________\n"
+        output+="\t# IH Weights\n"
         
         for i in range(len(self.IH_WEIGHTS)):
-            print "-------------------------"
-            print "Row {0}".format(i)
+            output+="\n________________________________________________\n"
+            output+="Row {0}\n".format(i)
             
             for j in range(len(self.IH_WEIGHTS[i])):
-                print "{0}".format(self.IH_WEIGHTS[i][j])
+                output+="{0}\n".format(self.IH_WEIGHTS[i][j])
             
-            print "\n-------------------------"
+            output+="\n________________________________________________\n"
 
-        print "\n________________________________________________"
-        print "\t# HO Weights"
+        output+="\n________________________________________________\n"
+        output+="\t# HO Weights\n"
         
         for i in range(len(self.HO_WEIGHTS)):
-            print "-------------------------"
-            print "Row {0}".format(i)
+            output+="\n________________________________________________\n"
+            output+="Row {0}\n".format(i)
             
             for j in range(len(self.HO_WEIGHTS[i])):
-                print "{0}".format(self.HO_WEIGHTS[i][j]),
+                output+="{0}\n".format(self.HO_WEIGHTS[i][j])
             
-            print "\n-------------------------"
+            output+="\n________________________________________________\n"
+
+        weightsFile.write(output)
+        weightsFile.close()
+
+        print tabulate(IH_WEIGHTS)
 
 
 #--------------------------------------------------------------------------
@@ -461,7 +483,7 @@ def plot_errors(error):
 #   Take Output readings and Prediction readings and plot 
 #   against each other.
 ###########################################################################
-def smooth_plot(actual,pred):
+def smooth_plot(actual,pred,epochs):
     
     fig = plt.figure()
     ax = fig.add_subplot(1,1,1)
@@ -478,12 +500,21 @@ def smooth_plot(actual,pred):
     x_smooth2=np.linspace(x2.min(),x2.max(),100)
     y_smooth2=spline(x2,y2,x_smooth2)
     #----------------------------------------------------------------------
-    plt.title("Actual = RED, Prediction = BLUE ")
+    plt.title("Output (red), Prediction (blue), Epochs ="+str(epochs))
     ax.plot(x_smooth2,y_smooth2,'b')
     ax.plot(x_smooth1,y_smooth1,'r')
     #----------------------------------------------------------------------
-   
-    fig.show()
+    print "________________________________________________"
+    print "1. Save plot "
+    print "2. Show Plot "
+    print "________________________________________________"
+    save = int(raw_input("Please enter option: "))
+
+    if save == 1:
+        savePlot()
+    else:
+        fig.show()
+    
 
 
 ###########################################################################
@@ -557,20 +588,35 @@ def execute_MLP():
         if option == "y":
             print "________________________________________________"
             trainingEpochs=int(raw_input("\nHow Many Epochs: "))
+
+            if(trainingEpochs < 100):
+                trainingEpochs = 100
+
             print "________________________________________________"
             trainingExamples=int(raw_input("\nHow Many Examples: "))
+
+            if(trainingExamples < 10):
+                trainingExamples = 10
+
             print "________________________________________________"
 
             TESTING_DATA=createConfiguredData(start,start+trainingExamples,data,maximumV)
 
+            #EPOCHS SET
+            Network.epochs=trainingEpochs
+            
             Network.TRAIN_WITH( TRAINING_DATA, trainingEpochs)
             Network.TEST( TESTING_DATA )
 
             start+=trainingExamples
+            Network.save_weights()
+            
+
         else:
             exit()
 
-    print Network.show_weights()
+    
+
 
 
 if __name__ == '__main__':
