@@ -21,19 +21,6 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import spline
 #--------------------------------------------------------------------------
 
-#--------------------------------------------------------------------------
-
-###########################################################################
-# Initiate Seed Globally
-###########################################################################
-
-random.seed(0)
-def generateRandBetween(a, b):
-    # Return Random Number ( a <= n < b )
-    return (b - a) * random.random() + a
-
-#--------------------------------------------------------------------------
-
 ###########################################################################
 # Populate an array with indexes (graphing)
 ###########################################################################
@@ -76,27 +63,35 @@ def activation_function(n):
 #                         
 #
 ###########################################################################
+
+#Initiate Random Generator
+random.seed(0)
+
 class NETWORK:
-    def __init__(self, number_of_inputs, number_of_hidden, number_of_outputs ,maximumV):
+    def __init__(self, number_of_inputs, number_of_hidden, \
+                       number_of_outputs , maximumV ):
         
         #------------------------------------------------------------------
         #   Neural Network Settings
 
         self.number_of_inputs  = number_of_inputs + 1    # 1 more for bias 
 
-        self.number_of_hidden , self.number_of_outputs \
-            = (number_of_hidden,number_of_outputs)
+        self.number_of_hidden , self.number_of_outputs = (\
+        number_of_hidden      , number_of_outputs        ) 
         
         #Default Learning Rate and Momentum (subject to change)
-        self.learning_rate , self.momentum, self.maximumV \
-            = (0.90,0.40, maximumV)
+        self.learning_rate , self.momentum, self.maximumV = ( \
+        0.90               , 0.40         , maximumV        )
 
         #------------------------------------------------------------------
         # Bias Activations
         n=[1.0]
         
-        (   self.input_activation,   self.hidden_activation,    self.output_activation     )\
-    =   (  n*self.number_of_inputs,  n * self.number_of_hidden, n * self.number_of_outputs )
+        (   self.input_activation,  \
+            self.hidden_activation, \
+            self.output_activation  ) = ( n * self.number_of_inputs,\
+                                          n * self.number_of_hidden,\
+                                          n * self.number_of_outputs )
         #------------------------------------------------------------------
         
         # Hidden Input and Hidden Output Weights
@@ -113,16 +108,33 @@ class NETWORK:
 
         self.output_change = populateVector(self.number_of_hidden,\
                                             self.number_of_outputs)
-        
+
+        #----------------------------------------------------------------------
+        #Print formatted Network Configuration
+        print "________________________________________________"
+        print "\t\tNeural Network\n"
+        print "________________________________________________"
+        print "Hidden = {0}\nOutputs = {1}\nInputs = {2} + 1 bias"\
+        .format(self.number_of_hidden,\
+                    self.number_of_outputs, \
+                    self.number_of_inputs-1)
+
+        print "Learning Rate = {0}\nMomentum = {1}"\
+        .format(    self.learning_rate, \
+                    self.momentum           )        
         #----------------------------------------------------------------------
         # Random Weight Assigment
+        print "________________________________________________"
+        print "# Initialising Hidden Weights\n"
         for i in range(self.number_of_inputs):
             for j in range(self.number_of_hidden):
-                self.IH_WEIGHTS[i][j] = generateRandBetween(-0.2,0.2)
+                self.IH_WEIGHTS[i][j] = self.generateRandFor("IH",i,j)
 
+        print "________________________________________________"
+        print "# Initialising Output Weights\n"
         for j in range(self.number_of_hidden):
             for k in range(self.number_of_outputs):
-                self.HO_WEIGHTS[j][k] = generateRandBetween(-2.0,2.0)
+                self.HO_WEIGHTS[j][k] = self.generateRandFor("HO",j,k)
         #----------------------------------------------------------------------
 
     ###########################################################################
@@ -132,7 +144,7 @@ class NETWORK:
 
     def feed_forward(self, inputs):
         #----------------------------------------------------------------------
-        #Input Activations
+        #Input Activations (-1 for lack of bias)
         for i in range(self.number_of_inputs-1):
             self.input_activation[i] = inputs[i]
         #----------------------------------------------------------------------
@@ -141,7 +153,9 @@ class NETWORK:
             sumOfHidden = 0.0
             
             for i in range(self.number_of_inputs):
-                sumOfHidden  = sumOfHidden  + self.input_activation[i] * self.IH_WEIGHTS[i][j]
+                
+                sumOfHidden  = sumOfHidden  \
+                + self.input_activation[i] * self.IH_WEIGHTS[i][j]
                                         
             self.hidden_activation[j] = activation_function(sumOfHidden)
         #----------------------------------------------------------------------
@@ -149,7 +163,9 @@ class NETWORK:
         for k in range(self.number_of_outputs):
             sumOfOutput = 0.0
             for j in range(self.number_of_hidden):
-                sumOfOutput = sumOfOutput + self.hidden_activation[j] * self.HO_WEIGHTS[j][k]
+                
+                sumOfOutput = sumOfOutput \
+                + self.hidden_activation[j] * self.HO_WEIGHTS[j][k]
             
             self.output_activation[k] = activation_function(sumOfOutput)
 
@@ -191,7 +207,11 @@ class NETWORK:
         for j in range(self.number_of_hidden):
             for k in range(self.number_of_outputs):
                 change = deltas[k] * self.hidden_activation[j]
-                self.HO_WEIGHTS[j][k] = self.HO_WEIGHTS[j][k] + self.learning_rate * change + self.momentum * self.output_change[j][k]
+                
+                self.HO_WEIGHTS[j][k] = self.HO_WEIGHTS[j][k]\
+                + self.learning_rate  * change \
+                + self.momentum       * self.output_change[j][k]
+                
                 self.output_change[j][k] = change
         #----------------------------------------------------------------------
     
@@ -204,7 +224,11 @@ class NETWORK:
         for i in range(self.number_of_inputs):
             for j in range(self.number_of_hidden):
                 change = deltas[j]*self.input_activation[i]
-                self.IH_WEIGHTS[i][j] = self.IH_WEIGHTS[i][j] + self.learning_rate * change + self.momentum * self.input_change[i][j]
+                
+                self.IH_WEIGHTS[i][j] = self.IH_WEIGHTS[i][j]\
+                + self.learning_rate  * change \
+                + self.momentum       * self.input_change[i][j]
+                
                 self.input_change[i][j] = change
         #----------------------------------------------------------------------
     
@@ -235,13 +259,16 @@ class NETWORK:
         #----------------------------------------------------------------------
         #Calculate Errors
         error = 0.0
+        outer_error = 0.0
         for k in range(len(targets)):
             sq_rtError=targets[k]-self.output_activation[k]
 
             #Root Mean Squared Error
-            error = error + (  math.pow(sq_rtError,2) / 2 )
+            error += (  math.pow(sq_rtError,2) / 2 )
+            outer_error += sq_rtError
+
         #----------------------------------------------------------------------
-        return error
+        return (error,outer_error)
 
     ###########################################################################
     #   With Hidden and Output Wieghts set and errors found
@@ -266,28 +293,36 @@ class NETWORK:
             predictionForNode=self.feed_forward( inputNodes )
 
             #Return data to original size
-            output_inputNodes = np.array(inputNodes) * self.maximumV
-            output_predictionForNode = self.maximumV * np.array(predictionForNode)
+            output_inputNodes        = np.array(inputNodes) \
+                                            * self.maximumV
+
+            output_predictionForNode = np.array(predictionForNode) \
+                                            * self.maximumV 
             #----------------------------------------------------------------------
             
             #Actual Values for data print out
-            actualValues=inputObj[1]
-            output_actualValues = self.maximumV * np.array(actualValues)
+            actualValues             = inputObj[1]
+            output_actualValues      = np.array(actualValues) * self.maximumV  
             #----------------------------------------------------------------------
             
-            #Plotting Data for graph to compare predictions and actual data
-            plot["Prediction"].append( self.maximumV * np.array(predictionForNode) )
-            plot["Actual"].append( self.maximumV * np.array(actualValues) )
+            #Plotting Data for graph to compare predictions and output data
+            plot["Prediction"].append(\
+                        np.array(predictionForNode)   * self.maximumV)
+            
+            plot["Actual"].append(\
+                        np.array(actualValues)        * self.maximumV)
 
             #----------------------------------------------------------------------
 
             #Print Formatted Data
-            print "____________________________________________________________"
-            print "\tTest Example: {0}".format(node+1)
+            print "________________________________________________"
+            print "\t# Test Example: {0}".format(node+1)
             print "[",
             for i in range(len(output_inputNodes)):
                 print "{0}".format(output_inputNodes[i]),
-            print "] \nActual={0} Prediction={1}".format(output_actualValues[0],output_predictionForNode[0])
+            print "] \nOutput={0} Prediction={1}".format(\
+                                                output_actualValues[0],\
+                                                output_predictionForNode[0])
            
             node+=1
         #----------------------------------------------------------------------
@@ -302,55 +337,74 @@ class NETWORK:
     ###########################################################################
     
     def TRAIN_WITH(self, examples, epochs):
-        #----------------------------------------------------------------------
-        #Print formatted Network Configuration
-        print \
-"________________________________________________"
-        print "\t\tNeural Network\n\
-________________________________________________\n\
-Epochs = {0}\n\
-Hidden = {1}\n\
-Outputs = {2}\n\
-Examples = {3}\n\
-Inputs = {4}\n\
-Learning Rate = {5}\n\
-Momentum = {6}".format(epochs, \
-                self.number_of_hidden,\
-                self.number_of_outputs, \
-                len(examples),\
-                self.number_of_inputs, \
-                self.learning_rate, \
-                self.momentum)
+ 
         #----------------------------------------------------------------------
         # Main Execution of Training (print errors) 
         print "________________________________________________"
-        print "\n|---------------------|"
-        print "| Error Calculations  |"
-        print "|---------------------|"
+        print "\n------------------------------------------------"
+        print "# Training Network"
+        print "------------------------------------------------"
+        print "Epochs = {0}\nTraining Examples = {1}"\
+               .format(epochs,len(examples))
+        print "Show every {0} epochs"\
+               .format(epochs/100)
         print "________________________________________________"
+
         errors=[]
         for epoch in range(epochs):
             error = 0.0
-            
+            outer_error = 0.0
             for obj in examples:
-                inputs = obj[0]                       #Training Input
-                targets = obj[1]                      #Training Output *Predictions
-                self.feed_forward(inputs)             #Forward Pass Function
-                
-                backPropagationValue=\
-                    self.backPropagate(targets)       #Back Propogation Function
-                
-                error = error + backPropagationValue  #Update Error
-            
+                #Training Input
+                inputs = obj[0]                       
 
-            
+                #Training Output *Predictions
+                targets = obj[1]
+                
+                #Forward Pass Function                      
+                self.feed_forward(inputs)             
+                
+                #Back Propogation Function
+                (backPropagationValue,real)=\
+                    self.backPropagate(targets)       
+                
+                #Update Error
+                error += backPropagationValue  
+                outer_error += real
+
             #Show epoch every every 1 percent...
             if epoch % (epochs/100) == 0:
                 errors.append(error)
-                print " [ Epoch:{0}\tError = {1} ]"\
-                .format(epoch,error) 
+                print "epoch:{0} > [ Error = {1} ]"\
+                .format(epoch,error)
+                #print " [ Epoch:{0}\tError = {1}\tReal Error = {2} ]"\
+                #.format(epoch,error,real) 
         #----------------------------------------------------------------------
-        plot_errors(errors)
+        print "\n------------------------------------------------"
+        print "# Finished Training"
+        print "------------------------------------------------"
+        #plot_errors(errors)
+
+    def generateRandFor(self,option,index1,index2):
+        # Return Random Number ( a <= n < b )
+
+        if option == "IH":
+            a = -2.0 / self.number_of_inputs
+            b = 2.0 / self.number_of_inputs
+            number = (b - a) * random.random() + a
+            print "IH_Weight[{0}][{1}] = {2}".format(index1,index2,number)
+            return number
+            
+        else:
+            a = -2.0 / self.number_of_outputs
+            b = 2.0 / self.number_of_outputs
+            number = (b - a) * random.random() + a
+            print "HO_Weight[{0}][{1}] = {2}".format(index1,index2,number)
+            return number
+
+        
+        
+       
 
 ###########################################################################
 #   Plot graphical view of errors
@@ -425,6 +479,8 @@ def createConfiguredData(start,end,data,maximumV):
         for j in range(8):
             inputNum = (data.getBy(str(j))[i]) / maximumV
             innerArray1.append(inputNum)
+
+        #innerArray1.append(1)
         #----------------------------------------------------------------------
         #Output (Actual to Compare to Prediction)
         outputNum = ( data.getBy("8")[i] ) / maximumV
@@ -447,12 +503,12 @@ def execute_MLP():
     # Call class Data (populate data structure)
     
     data = Data()
-    maximumV=1
+    maximumV=4800
     #----------------------------------------------------------------------
     # Create Training and Test Data from CWKData.xlsx
     
-    TRAINING_DATA=createConfiguredData(1,161,data,maximumV) #TRAINING DATA
-    TESTING_DATA=createConfiguredData(161,201,data,maximumV) #TEST DATA
+    TRAINING_DATA=createConfiguredData(3,83,data,maximumV) #TRAINING DATA
+    TESTING_DATA=createConfiguredData(83,103,data,maximumV) #TEST DATA
     
     #----------------------------------------------------------------------
     # Assign lengths
@@ -470,7 +526,7 @@ def execute_MLP():
     #----------------------------------------------------------------------
     # Train Network with 2000 epochs and split into percentage
     
-    Network.TRAIN_WITH( TRAINING_DATA, 2000)
+    Network.TRAIN_WITH( TRAINING_DATA, 4000)
     Network.TEST( TESTING_DATA )
 
 
