@@ -26,8 +26,7 @@ from scipy.interpolate import spline
 from tabulate import *
 
 #--------------------------------------------------------------------------
-def savePlot():
-    pylab.savefig('Graph.png')
+   
 
 ###########################################################################
 # Populate an array with indexes (graphing)
@@ -193,7 +192,7 @@ class NETWORK:
         for j in range(self.number_of_hidden):
             error = 0.0
             for k in range(self.number_of_outputs):
-                error = error + delta[k] * self.HO_WEIGHTS[j][k]
+                error = error + (delta[k] * self.HO_WEIGHTS[j][k])
             delta[j] =  (1.0 - math.pow(self.hidden_activation[j],2) ) * error
         #----------------------------------------------------------------------
         return delta
@@ -209,8 +208,8 @@ class NETWORK:
                 change = deltas[k] * self.hidden_activation[j]
                 
                 self.HO_WEIGHTS[j][k] = self.HO_WEIGHTS[j][k]\
-                + self.learning_rate  * change \
-                + self.momentum       * self.output_change[j][k]
+                + (self.learning_rate  * change) \
+                + (self.momentum       * self.output_change[j][k])
                 
                 self.output_change[j][k] = change
         #----------------------------------------------------------------------
@@ -226,8 +225,8 @@ class NETWORK:
                 change = deltas[j]*self.input_activation[i]
                 
                 self.IH_WEIGHTS[i][j] = self.IH_WEIGHTS[i][j]\
-                + self.learning_rate  * change \
-                + self.momentum       * self.input_change[i][j]
+                + (self.learning_rate  * change) \
+                + (self.momentum       * self.input_change[i][j])
                 
                 self.input_change[i][j] = change
         #----------------------------------------------------------------------
@@ -264,7 +263,7 @@ class NETWORK:
             sq_rtError=targets[k]-self.output_activation[k]
 
             #Root Mean Squared Error
-            error += (  math.pow(sq_rtError,2) / 2 )
+            error += math.pow(sq_rtError,2) / 2 
             
         #----------------------------------------------------------------------
         return error
@@ -534,9 +533,16 @@ def plot_errors(error):
 ###########################################################################
 def smooth_plot(actual,pred,epochs):
     
+    
+
     fig = plt.figure()
     ax = fig.add_subplot(1,1,1)
-    plt.ion()
+
+    fig2 = plt.figure()
+    ax2 = fig2.add_subplot(1,1,1)
+
+    
+    
     #----------------------------------------------------------------------
     y1=np.array(actual)
     x1=np.array( vector( len(actual) ) )
@@ -550,8 +556,15 @@ def smooth_plot(actual,pred,epochs):
     y_smooth2=spline(x2,y2,x_smooth2)
     #----------------------------------------------------------------------
     plt.title("Output (red), Prediction (blue), Epochs ="+str(epochs))
-    ax.plot(x_smooth2,y_smooth2,'b')
+    
     ax.plot(x_smooth1,y_smooth1,'r')
+    ax.plot(x_smooth2,y_smooth2,'b')
+
+    ax2.plot(x1,y1,'r')
+    ax2.plot(x2,y2,'b')
+
+    #ax.errorbar(x_smooth2,y_smooth2,xerr=2,yerr=20,fmt='none', color='green')
+    
     #----------------------------------------------------------------------
     print "________________________________________________"
     print "1. Save plot "
@@ -560,9 +573,11 @@ def smooth_plot(actual,pred,epochs):
     save = int(raw_input("Please enter option: "))
 
     if save == 1:
-        savePlot()
+        fig.savefig('SmooothGraph.pdf')
+        fig2.savefig('NormalGraph.pdf')
     else:
         fig.show()
+        fig2.show()
     
 
 
