@@ -49,13 +49,32 @@ def populateVector(outerNum, innerNum):
     return vector
 
 ###########################################################################
-# Return hyperbolic tangent
+# Hyperbolic tangent functions
 ########################################################################### 
 
-def activation_function(n):
-    #net= -1 * n
-    #return 1 / ( 1 + math.exp(net) )
+def hyperbolic_tangent(n):
     return math.tanh(n)
+
+def hyperbolic_tangent_dv(n):
+    return (1.0 - math.pow(n,2))
+
+###########################################################################
+# Loigistic functions
+###########################################################################
+
+def sigmoid(n):
+    return 1.0 / (1.0 + math.exp(-n))
+
+def sigmoid_dv(n):
+    return n * ( 1.0 - n )
+
+def activation_function(n):
+    return hyperbolic_tangent(n)
+    #return sigmoid(n)
+
+def derivative_function(n):
+    return hyperbolic_tangent_dv(n)
+    #return sigmoid_dv(n)
 
 #--------------------------------------------------------------------------
 #Initiate Random Generator
@@ -82,7 +101,7 @@ class NETWORK:
         
         #Default Learning Rate and Momentum (subject to change)
         self.learning_rate , self.momentum, self.maximumV = ( \
-        0.90               , 0.40         , maximumV        )
+        0.50               , 0.9,            maximumV        )
 
         #------------------------------------------------------------------
         # Bias Activations
@@ -145,7 +164,7 @@ class NETWORK:
         #----------------------------------------------------------------------
         #Input Activations (-1 for lack of bias)
         for i in range(self.number_of_inputs-1):
-            self.input_activation[i] = inputs[i]
+            self.input_activation[i] = activation_function(inputs[i])
         #----------------------------------------------------------------------
         #Hidden Activations
         for j in range(self.number_of_hidden):
@@ -179,7 +198,7 @@ class NETWORK:
         #----------------------------------------------------------------------
         for k in range(self.number_of_outputs):
             error = targets[k] - self.output_activation[k]
-            delta[k] = (1.0 - math.pow(self.output_activation[k],2)) * error
+            delta[k] = derivative_function(self.output_activation[k]) * error
         #----------------------------------------------------------------------
         return delta
 
@@ -193,16 +212,28 @@ class NETWORK:
             error = 0.0
             for k in range(self.number_of_outputs):
                 error = error + (delta[k] * self.HO_WEIGHTS[j][k])
-            delta[j] =  (1.0 - math.pow(self.hidden_activation[j],2) ) * error
+            delta[j] =  derivative_function(self.hidden_activation[j]) * error
+            
+
         #----------------------------------------------------------------------
         return delta
 
+    def bold_driver(self,old,new):
+        if new > old:
+            self.learning_rate*=0.5
+        else:
+            self.learning_rate*=1.1
+
+        return new
+        
+        
     ###########################################################################
     # Update Hiddden Output weights
     ###########################################################################
     
     def update_HO(self,deltas):
         #----------------------------------------------------------------------
+       
         for j in range(self.number_of_hidden):
             for k in range(self.number_of_outputs):
                 change = deltas[k] * self.hidden_activation[j]
@@ -218,11 +249,16 @@ class NETWORK:
     # Update Input Hiddden weights
     ###########################################################################
     
+    
     def update_IH(self,deltas):
+        
         #----------------------------------------------------------------------
+        
         for i in range(self.number_of_inputs):
             for j in range(self.number_of_hidden):
                 change = deltas[j]*self.input_activation[i]
+                
+                
                 
                 self.IH_WEIGHTS[i][j] = self.IH_WEIGHTS[i][j]\
                 + (self.learning_rate  * change) \
@@ -258,14 +294,21 @@ class NETWORK:
         #----------------------------------------------------------------------
         #Calculate Errors
         error = 0.0
+        normal_error=0.0
         
         for k in range(len(targets)):
             sq_rtError=targets[k]-self.output_activation[k]
 
+
             #Root Mean Squared Error
-            error += math.pow(sq_rtError,2) / 2 
-            
+            error += math.pow(sq_rtError,2)/ len(targets)
+            normal_error += sq_rtError
+
+
         #----------------------------------------------------------------------
+        
+        
+        
         return error
     
     ###########################################################################
@@ -351,10 +394,12 @@ class NETWORK:
         print "________________________________________________"
         print "\n\t(epoch number) := (error)\n"
 
-        errors=[]
+        RMSE_=[]
         for epoch in range(epochs):
+            
             error = 0.0
-            outer_error = 0.0
+            normal=0.0
+            
             for obj in examples:
                 #Training Input
                 inputs = obj[0]                       
@@ -366,22 +411,25 @@ class NETWORK:
                 self.feed_forward(inputs)             
                 
                 #Back Propogation Function
-                backPropagationValue=\
-                    self.backPropagate(targets)       
+                RMSE=\
+                    self.backPropagate(targets)
                 
                 #Update Error
-                error += backPropagationValue  
+                error         += RMSE
                 
-            errors.append(error)
+            RMSE_.append(error)
+
             #Show epoch every every 1 percent...
             if epoch % (epochs/100) == 0:
                 
-                print "\t({0}) := ({1}) "\
+                print "\t({0}) := ({1})"\
                 .format(epoch,error)
+
+            
         #----------------------------------------------------------------------
        
         print "\n\t# Finished Training\n\n"
-        self.save_errors(errors)
+        self.save_errors(RMSE_)
         
     
         
@@ -420,7 +468,7 @@ class NETWORK:
         output=""
 
         output+="\n----------------------------------------\n"
-        output+="# Errors"
+        output+="# RMSE Errors"
         output+="\n----------------------------------------\n"
 
         for i in range(len(errors)):
@@ -430,6 +478,8 @@ class NETWORK:
         errorsFile.write(output)
 
         errorsFile.close()
+
+        plot_errors(errors)
 
     ###########################################################################
     #   Save Weights to File weights_activations.txt
@@ -515,17 +565,20 @@ class NETWORK:
 #   Plot graphical view of errors
 ###########################################################################
 def plot_errors(error):
+    fig = plt.figure()
+    ax = fig.add_subplot(1,1,1)
+    
     #----------------------------------------------------------------------
     y1=np.array(error)
-    x1=np.array( vector( len(error) ) )
-    x_smooth1=np.linspace(x1.min(),x1.max(),100)
-    y_smooth1=spline(x1,y1,x_smooth1)
     #----------------------------------------------------------------------
-    plt.title("Errors")
-    p2,=plt.plot(x_smooth1,y_smooth1,'r') 
-    plt.ylabel('Error Value')
-    #----------------------------------------------------------------------
-    plt.show() 
+ 
+    ax.plot(y1,'r')
+
+    plt.ylim((0.00,0.03))
+
+    fig.savefig('ErrorPlots.pdf')
+    fig.show()
+
 
 ###########################################################################
 #   Take Output readings and Prediction readings and plot 
@@ -533,51 +586,19 @@ def plot_errors(error):
 ###########################################################################
 def smooth_plot(actual,pred,epochs):
     
-    
-
     fig = plt.figure()
     ax = fig.add_subplot(1,1,1)
 
-    fig2 = plt.figure()
-    ax2 = fig2.add_subplot(1,1,1)
-
-    
-    
-    #----------------------------------------------------------------------
     y1=np.array(actual)
-    x1=np.array( vector( len(actual) ) )
-    x_smooth1=np.linspace(x1.min(),x1.max(),100)
-    y_smooth1=spline(x1,y1,x_smooth1)
-    #----------------------------------------------------------------------
     
     y2=np.array(pred)
-    x2=np.array( vector( len(pred) ) )
-    x_smooth2=np.linspace(x2.min(),x2.max(),100)
-    y_smooth2=spline(x2,y2,x_smooth2)
-    #----------------------------------------------------------------------
+
+    ax.plot(y1,'r')
+    ax.plot(y2,'b')
+
     plt.title("Output (red), Prediction (blue), Epochs ="+str(epochs))
+    fig.savefig('PredictionsVSActual.pdf')
     
-    ax.plot(x_smooth1,y_smooth1,'r')
-    ax.plot(x_smooth2,y_smooth2,'b')
-
-    ax2.plot(x1,y1,'r')
-    ax2.plot(x2,y2,'b')
-
-    #ax.errorbar(x_smooth2,y_smooth2,xerr=2,yerr=20,fmt='none', color='green')
-    
-    #----------------------------------------------------------------------
-    print "________________________________________________"
-    print "1. Save plot "
-    print "2. Show Plot "
-    print "________________________________________________"
-    save = int(raw_input("Please enter option: "))
-
-    if save == 1:
-        fig.savefig('SmooothGraph.pdf')
-        fig2.savefig('NormalGraph.pdf')
-    else:
-        fig.show()
-        fig2.show()
     
 
 
@@ -638,9 +659,6 @@ def execute_MLP(trainingAmount,testingStart):
     # Create MultiLayer Perceptron Network
     
     Network = NETWORK ( inputs, hidden, outputs, maximumV )    
-
-    Network.learning_rate=0.9
-    Network.momentum=0.5
     #----------------------------------------------------------------------
     # Train Network with 400 training examples (> 100 epochs) and (> 10 training patterns)
 
