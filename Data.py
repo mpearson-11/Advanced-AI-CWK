@@ -4,7 +4,18 @@
 #   External Sources include:
 #       http://stackoverflow.com/questions/4371163/reading-xlsx-files-using-python
 
-            
+def normalise(ar,minM,maxM):
+    
+    e_min=minM
+    e_max=maxM
+
+    normalised=[]
+    for i in range(len(ar)):
+        normal=float((ar[i] - e_min)) / float((e_max - e_min))
+        normalised.append(normal)
+
+    return normalised
+
 def NOT_AND(a,b):
     return  int(not(bool(a)) and bool(b) )
 
@@ -16,6 +27,19 @@ def AND_F(a,b):
 
 def O_R(a,b):
     return int ( bool(a) or bool(b) )
+
+
+TEST_ME=[
+    
+    [[1,2,3],[6]],
+    [[1,1,2],[4]],
+    [[1,2,4],[7]],
+    [[1,4,5],[10]],
+    [[2,3,1],[6]],
+    [[1,3,4],[8]],
+    [[2,4,5],[11]]
+    
+]
 
 
 OR =[
@@ -87,6 +111,84 @@ import math
 #from pylab import *
 #import numpy as np
 
+###########################################################################
+#   Return configured data to use in Neural Network with 
+#   Training and Testing.
+###########################################################################
+def createNormalisedDataSet(start,end,data,nSet):
+    #----------------------------------------------------------------------
+    # Create Empty Array
+    pat=[]
+    minimum=data.minN
+    maximum=data.maxN
+    #----------------------------------------------------------------------
+    #Take Data from Document starting at (start) and ending at (end)
+    for i in range(start,end):
+        
+        innerArray1,innerArray2 = ([],[])
+        #----------------------------------------------------------------------
+        #Take from each column
+        for j in range(nSet):
+            inputNum = (data.getBy(str(j))[i])
+            innerArray1.append(inputNum)
+
+        #----------------------------------------------------------------------
+        #Output (Actual to Compare to Prediction)
+        outputNum = data.getBy("8")[i]
+
+         #Normalise Inner Array
+        innerArray1=normalise(innerArray1,minimum,maximum)
+        
+        #Populate Inner arrays
+        innerArray2.append(outputNum)
+        innerArray2=normalise(innerArray2,minimum,maximum)
+
+        pat.append( [innerArray1,innerArray2] )
+
+       
+    #----------------------------------------------------------------------
+
+    return pat
+
+###########################################################################
+#   Return configured data to use in Neural Network with 
+#   Training and Testing.
+###########################################################################
+def createDataSet(start,end,data):
+    #----------------------------------------------------------------------
+    # Create Empty Array
+    pat=[]
+    #----------------------------------------------------------------------
+    #Take Data from Document starting at (start) and ending at (end)
+    for i in range(start,end):
+        
+        innerArray1,innerArray2,innerArray3 = ([],[],[])
+        #----------------------------------------------------------------------
+        #Take from each column
+        for j in range(8):
+            inputNum = (data.getBy(str(j))[i])
+            innerArray1.append(inputNum)
+
+       
+        #----------------------------------------------------------------------
+        #Output (Actual to Compare to Prediction)
+        outputNum = data.getBy("8")[i]
+
+         #Normalise Inner Array
+        innerArray1=innerArray1
+        
+        #Populate Inner arrays
+        innerArray2.append(outputNum)
+        innerArray2=innerArray2
+
+        innerArray3.append(innerArray1)
+        innerArray3.append(innerArray2)
+
+        pat.append(innerArray3)
+    #----------------------------------------------------------------------
+
+    return pat
+
 def showLegend(Data):
     os.system('clear')
     for i,j in Data.tagLine.items():
@@ -97,9 +199,28 @@ class Data:
         self.document=[]
         self.tagLine={}
         self.populate()
-        
+        self.maxN=self.getMax()
+        self.minN=self.getMin()
+
+    def getMax(self):
+        maximums=[]
+        for i in range(9):
+            currentMax=max(self.getBy(str(i)))
+            maximums.append(currentMax)
+
+        return max(maximums)
+
+    def getMin(self):
+        mimimums=[]
+        for i in range(9):
+            currentMin=min(self.getBy(str(i)))
+            mimimums.append(currentMin)
+
+        return min(mimimums)
+
     def populate(self):
         doc=self.xlsx('CWData.xlsx')
+
 
         for i in range(1,10):
             self.tagLine[str(i-1)]=doc[i]["M"]

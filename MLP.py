@@ -1,7 +1,8 @@
 #   @Copywright Max Pearson
 #   Student ID: B123103
+#   Date Created 01/03/2015
 #
-#   Multilayer Perceptron using Backpropagation algorithm 
+#   Multilayer Perceptron using Backpropagation algorithm with Neuron states
 #   
 #   External Sources include:
 #       http://stackoverflow.com/questions/4371163/reading-xlsx-files-using-python
@@ -11,10 +12,14 @@
 import random
 import math
 import sys
+from copy import *
 
 #--------------------------------------------------------------------------
 #Data Class for Neural Network use
 from Data import *
+
+from Neurons import *
+
 #--------------------------------------------------------------------------
 #Scientific Packages for plotting and array manipulation
 import pylab
@@ -26,7 +31,17 @@ from scipy.interpolate import spline
 from tabulate import *
 
 #--------------------------------------------------------------------------
-   
+
+def checkErrors(errors):
+    size=len(errors)-1
+    if errors[size] > errors[size-1]:
+        return True
+    else:
+        return False 
+
+def mean(x):
+    return sum(x) / float(len(x))
+
 
 ###########################################################################
 # Populate an array with indexes (graphing)
@@ -68,6 +83,7 @@ def sigmoid(n):
 def sigmoid_dv(n):
     return n * ( 1.0 - n )
 
+#Activation
 def activation_function(n):
     return hyperbolic_tangent(n)
     #return sigmoid(n)
@@ -80,17 +96,52 @@ def derivative_function(n):
 #Initiate Random Generator
 random.seed(0)
 #--------------------------------------------------------------------------
+###########################################################################
+#                         ------------------------
+#                         |     NETWORK clone    |
+#                         ------------------------
+###########################################################################
+class NetworkClone:
+    def __init__(self):
+        pass
+
 
 ###########################################################################
 #                         ------------------------
 #                         |     NETWORK class    |
 #                         ------------------------
 ###########################################################################
+
 class NETWORK:
-    def __init__(self, number_of_inputs, number_of_hidden, \
-                       number_of_outputs , maximumV ):
+
+    def cloneState(self):
+        #Create Neuron from clone and delete once allocated
+        networkClone=NetworkClone()
         
-        self.epochs=0
+        networkClone.learning_rate      = self.learning_rate
+        networkClone.momentum           = self.momentum
+        
+        networkClone.IH_WEIGHTS         = self.IH_WEIGHTS
+        networkClone.HO_WEIGHTS         = self.HO_WEIGHTS
+        
+        networkClone.input_activation   = self.input_activation
+        networkClone.output_activation  = self.output_activation
+        networkClone.hidden_activation  = self.hidden_activation
+        
+        networkClone.input_change       = self.input_change
+        networkClone.output_change      = self.output_change
+
+        networkClone.trainingID         = self.trainingID
+
+        return networkClone
+    
+    def __init__(self, number_of_inputs, number_of_hidden, \
+                       number_of_outputs):
+        
+        self.__validationNeurons=Neurons()
+        self.__trainingNeurons=Neurons()
+
+        self.trainingID=0
         #------------------------------------------------------------------
         #   Neural Network Settings
 
@@ -100,8 +151,8 @@ class NETWORK:
         number_of_hidden      , number_of_outputs        ) 
         
         #Default Learning Rate and Momentum (subject to change)
-        self.learning_rate , self.momentum, self.maximumV = ( \
-        0.50               , 0.9,            maximumV        )
+        self.learning_rate , self.momentum = ( \
+        0.5               , 0.9              )
 
         #------------------------------------------------------------------
         # Bias Activations
@@ -148,11 +199,11 @@ class NETWORK:
         print "\nWeights Initialised\n"
         for i in range(self.number_of_inputs):
             for j in range(self.number_of_hidden):
-                self.IH_WEIGHTS[i][j] = self.generateRandFor("IH")
+                self.IH_WEIGHTS[i][j] = generateRandFor(self,"IH")
 
         for j in range(self.number_of_hidden):
             for k in range(self.number_of_outputs):
-                self.HO_WEIGHTS[j][k] = self.generateRandFor("HO")
+                self.HO_WEIGHTS[j][k] = generateRandFor(self,"HO")
         #----------------------------------------------------------------------
 
     ###########################################################################
@@ -162,9 +213,12 @@ class NETWORK:
 
     def feed_forward(self, inputs):
         #----------------------------------------------------------------------
+
+        
         #Input Activations (-1 for lack of bias)
-        for i in range(self.number_of_inputs-1):
-            self.input_activation[i] = activation_function(inputs[i])
+        for i in range((self.number_of_inputs-1)):
+            self.input_activation[i] = inputs[i]
+        
         #----------------------------------------------------------------------
         #Hidden Activations
         for j in range(self.number_of_hidden):
@@ -194,49 +248,64 @@ class NETWORK:
     # Calculate Output Errors
     ###########################################################################
     
-    def calculate_output_error(self,targets,delta):
+    def calculate_output_error(self,targets,outputDELTA):
         #----------------------------------------------------------------------
         for k in range(self.number_of_outputs):
             error = targets[k] - self.output_activation[k]
-            delta[k] = derivative_function(self.output_activation[k]) * error
+            outputDELTA[k] = derivative_function(self.output_activation[k]) * error
         #----------------------------------------------------------------------
-        return delta
+        return outputDELTA
 
     ###########################################################################
     # Calculate Hidden Error
     ###########################################################################
     
-    def calculate_hidden_error(self,delta):
+    def calculate_hidden_error(self,hiddenDELTA,outputDELTA):
         #----------------------------------------------------------------------
         for j in range(self.number_of_hidden):
             error = 0.0
             for k in range(self.number_of_outputs):
-                error = error + (delta[k] * self.HO_WEIGHTS[j][k])
-            delta[j] =  derivative_function(self.hidden_activation[j]) * error
+                error = error + (outputDELTA[k] * self.HO_WEIGHTS[j][k])
+            
+            hiddenDELTA[j] =  derivative_function(self.hidden_activation[j]) * error
             
 
         #----------------------------------------------------------------------
-        return delta
+        return hiddenDELTA
 
-    def bold_driver(self,old,new):
-        if new > old:
-            self.learning_rate*=0.5
-        else:
-            self.learning_rate*=1.1
+    def bold_driver(self,ERRORS,valNum):
+        size=len(ERRORS)
 
-        return new
-        
+        if size > 1:
+            
+            new=ERRORS[size-1]
+            old=ERRORS[size-2]
+            
+            if new < old:
+                if self.learning_rate > 0.9:
+                    pass
+                else:
+                    self.learning_rate *= 1.01
+                valNum=0
+                    
+            elif new > old:
+                self.learning_rate *= 0.50
+                valNum+=1
+
+            else:
+                pass
+
+        return valNum
         
     ###########################################################################
     # Update Hiddden Output weights
     ###########################################################################
-    
-    def update_HO(self,deltas):
+    def update_HO(self,outputDELTA):
         #----------------------------------------------------------------------
        
         for j in range(self.number_of_hidden):
             for k in range(self.number_of_outputs):
-                change = deltas[k] * self.hidden_activation[j]
+                change = outputDELTA[k] * self.hidden_activation[j]
                 
                 self.HO_WEIGHTS[j][k] = self.HO_WEIGHTS[j][k]\
                 + (self.learning_rate  * change) \
@@ -248,18 +317,15 @@ class NETWORK:
     ###########################################################################
     # Update Input Hiddden weights
     ###########################################################################
-    
-    
-    def update_IH(self,deltas):
+    def update_IH(self,hiddenDELTA):
         
         #----------------------------------------------------------------------
         
         for i in range(self.number_of_inputs):
             for j in range(self.number_of_hidden):
-                change = deltas[j]*self.input_activation[i]
+                change = hiddenDELTA[j]*self.input_activation[i]
                 
-                
-                
+
                 self.IH_WEIGHTS[i][j] = self.IH_WEIGHTS[i][j]\
                 + (self.learning_rate  * change) \
                 + (self.momentum       * self.input_change[i][j])
@@ -284,7 +350,7 @@ class NETWORK:
         #----------------------------------------------------------------------
         # Calculate Hidden Error
         hiddenDELTA = [0.0] * self.number_of_hidden
-        hiddenDELTA = self.calculate_hidden_error(hiddenDELTA)
+        hiddenDELTA = self.calculate_hidden_error(hiddenDELTA,outputDELTA)
         #----------------------------------------------------------------------
         #Update Output Hidden Weights
         self.update_HO(outputDELTA)
@@ -294,40 +360,34 @@ class NETWORK:
         #----------------------------------------------------------------------
         #Calculate Errors
         error = 0.0
-        normal_error=0.0
         
         for k in range(len(targets)):
-            sq_rtError=targets[k]-self.output_activation[k]
-
-
-            #Root Mean Squared Error
-            error += math.pow(sq_rtError,2)/ len(targets)
-            normal_error += sq_rtError
-
-
+            sq_rtError = targets[k] - self.output_activation[k]
+            error += math.pow(sq_rtError,2)
         #----------------------------------------------------------------------
-        
-        
-        
-        return error
+        #Root Mean Squared Error
+        #return math.sqrt(error/len(targets))
+
+        #Normalised Root Mean Squared Error
+        return error / len(targets)
     
     ###########################################################################
     #   With Hidden and Output Wieghts set and errors found
     #   run test data through forward pass function to output predictions.
     ###########################################################################
    
-    def TEST(self, examples):
+    def TEST(self, examples, TYPE):
         #----------------------------------------------------------------------
         #Tabulate Answers
-        plot={}
-        plot["Prediction"]=[]
-        plot["Actual"]=[]
-
         
+        predictions=[]
+        actual=[]
+
         #----------------------------------------------------------------------
         #Node count for outputting example number
         node=0
         #----------------------------------------------------------------------
+        
         for inputObj in examples:
 
             #----------------------------------------------------------------------
@@ -336,24 +396,20 @@ class NETWORK:
             predictionForNode=self.feed_forward( inputNodes )
 
             #Return data to original size
-            output_inputNodes        = np.array(inputNodes) \
-                                            * self.maximumV
+            output_inputNodes        = inputNodes
 
-            output_predictionForNode = np.array(predictionForNode) \
-                                            * self.maximumV 
+            output_predictionForNode = predictionForNode
             #----------------------------------------------------------------------
             
             #Actual Values for data print out
             actualValues             = inputObj[1]
-            output_actualValues      = np.array(actualValues) * self.maximumV  
+            output_actualValues      = actualValues
             #------------------------------------------------------------------
             
             #Plotting Data for graph to compare predictions and output data
-            plot["Prediction"].append(\
-                        np.array(predictionForNode)   * self.maximumV)
+            predictions.append( np.array(predictionForNode) )
             
-            plot["Actual"].append(\
-                        np.array(actualValues)        * self.maximumV)
+            actual.append( np.array(actualValues) )
 
             #------------------------------------------------------------------
 
@@ -370,7 +426,7 @@ class NETWORK:
             node+=1
         #----------------------------------------------------------------------
         #Plot Actual against predictions
-        smooth_plot( plot["Actual"] , plot["Prediction"], self.epochs )
+        smooth_plot( actual , predictions, TYPE )
         #----------------------------------------------------------------------
     
 
@@ -379,13 +435,17 @@ class NETWORK:
     # calculations.
     ###########################################################################
     
-    def TRAIN_WITH(self, examples, epochs):
- 
+    def TRAIN_WITH(self, examples, epochs, num):
+    
+        self.trainingID=num
         #----------------------------------------------------------------------
         # Main Execution of Training (print errors) 
         print "________________________________________________"
-       
-        print "\t# Training Network\n"
+        
+        if num == 0:
+            print "\t# Training Network\n"
+        else:
+            print "\t# Validating Network\n"
         
         print "\tEpochs = {0}\n\tTraining Examples = {1}"\
                .format(epochs,len(examples))
@@ -395,14 +455,15 @@ class NETWORK:
         print "\n\t(epoch number) := (error)\n"
 
         RMSE_=[]
+        valNum=0
+
         for epoch in range(epochs):
-            
+
             error = 0.0
-            normal=0.0
             
             for obj in examples:
                 #Training Input
-                inputs = obj[0]                       
+                inputs = obj[0]          
 
                 #Training Output *Predictions
                 targets = obj[1]
@@ -418,57 +479,70 @@ class NETWORK:
                 error         += RMSE
                 
             RMSE_.append(error)
+            valNum=self.bold_driver(RMSE_,valNum)
 
-            #Show epoch every every 1 percent...
-            if epoch % (epochs/100) == 0:
+            #Validation Set
+            if num == 1:
                 
-                print "\t({0}) := ({1})"\
-                .format(epoch,error)
+                networkClone=self.cloneState()
+                self.__validationNeurons.addNeuron(epoch,networkClone,RMSE_[epoch])
+                #Delete networkClone for memory efficiency
+                del networkClone
+                
+                if valNum >= 10:
+                    print "\n\t# Finished Validation\n\n"
 
-            
+                    selectedNeuron = ( epoch - 10 )       
+
+                    self.__validationNeurons.setSelectedNeuron(selectedNeuron)
+
+                    outputThisNeuron = self.__validationNeurons.getNeuron(selectedNeuron)
+                    
+                    #Pass Neuron through save errors
+                    self.save_errors(RMSE_)
+                    #Show Neuron at epoch selected with WEIGHTS AND BIASES
+
+                    show(outputThisNeuron,selectedNeuron)
+                    return
+
+                else:
+                    if epoch == epochs-1:
+                        print "Terminating - (Minima was not found)\n\n Try a smaller Training Set\n\n !!!!"
+                        return 
+
+                
+            print "\t({0}) := ({1}) lr: ={2}"\
+            .format(epoch,error,self.learning_rate)
+     
         #----------------------------------------------------------------------
-       
         print "\n\t# Finished Training\n\n"
-        self.save_errors(RMSE_)
-        
-    
-        
-    
-    ###########################################################################
-    #   Generate Random Numbers for Hidden and Output Weights
-    ###########################################################################
-    def generateRandFor(self,option,):
-       
-        # Return Random Number ( a <= n < b )
 
-        if option == "IH":
-            a = -2.0 / self.number_of_inputs
-            b = 2.0 / self.number_of_inputs
-            number = (b - a) * random.random() + a
-            return number
-            
-        else:
-            a = -2.0 / self.number_of_hidden
-            b = 2.0 / self.number_of_hidden
-            number = (b - a) * random.random() + a
-            return number
+        #Pass Neuron through save errors
+        self.save_errors(RMSE_)
+    
 
     ###########################################################################
     #   Save RMS Errors to File errors.txt
     ###########################################################################    
     def save_errors(self,errors):
         
-        fileName="errors.txt"
-        errorsFile= open(fileName, "w")
-        errorsFile.close()
+        TYPE=self.trainingID
 
+        if TYPE==0:
+            fileName="TrainingErrors.txt"
+            name="# Training Errors"
+        
+        elif TYPE==1:
+            fileName="ValidationErrors.txt"
+            name="# Validation Errors"
+        
         #Now created rewrite
         errorsFile= open(fileName, "w")
 
         output=""
 
         output+="\n----------------------------------------\n"
-        output+="# RMSE Errors"
+        output+=name
         output+="\n----------------------------------------\n"
 
         for i in range(len(errors)):
@@ -479,78 +553,115 @@ class NETWORK:
 
         errorsFile.close()
 
-        plot_errors(errors)
+        plot_errors(errors,self.trainingID)
 
-    ###########################################################################
-    #   Save Weights to File weights_activations.txt
-    ###########################################################################
-    def save_weights(self):
+###########################################################################
+#   Save Weights to File weights_activations.txt
+########################################################################### 
+    
         
-        fileName="weights_activations.txt"
-        weightsFile= open(fileName, "w")
-        weightsFile.close()
+    
+###########################################################################
+#   Generate Random Numbers for Hidden and Output Weights
+###########################################################################
+def generateRandFor(networkState,option):
+   
+    # Return Random Number ( a <= n < b )
 
-        #Now created rewrite
-        weightsFile= open(fileName, "w")
+    if option == "IH":
+        a = -2.0 / networkState.number_of_inputs
+        b = 2.0 / networkState.number_of_inputs
+        number = (b - a) * random.random() + a
+        return number
+        
+    else:
+        a = -2.0 / networkState.number_of_hidden
+        b = 2.0 / networkState.number_of_hidden
+        number = (b - a) * random.random() + a
+        return number
 
-        output=""
-        output+="-------------------------\n"
-        output+="# IH Weights"
-        output+="\n-------------------------\n"
-        output += tabulate( self.IH_WEIGHTS)
-        
-        output+="\n-------------------------\n"
-        output+="# HO Weights"
-        output+="\n-------------------------\n"
-        output += tabulate( self.HO_WEIGHTS)
-        
-        
-        output+="\n-------------------------\n"
-        output+="# Input Final Changes"
-        output+="\n-------------------------\n"
-        output+= tabulate( self.input_change)
-        
-        
-        output+="\n-------------------------\n"
-        output+="# Output Final Changes"
-        output+="\n-------------------------\n"
-        output+= tabulate( self.output_change)
 
-        output+="\n-------------------------\n"
-        output+="# Input Activations"
-        output+="\n-------------------------\n"
-        
 
-        output+="---------------------\n"
-        for i in self.input_activation:
-            output+=str(i)
-            output+="\n"
-        output+="\n---------------------\n"
-        
-        output+="\n-------------------------\n"
-        output+="# Output Activations"
-        output+="\n-------------------------\n"
-        
-        output+="---------------------\n"
-        for i in self.output_activation:
-            output+=str(i)
-            output+="\n"
-        output+="\n---------------------\n"
+def show(neuron,epoch):
 
-        output+="\n-------------------------\n"
-        output+="# Hidden Activations"
-        output+="\n-------------------------\n"
-        
-        output+="---------------------\n"
-        for i in self.hidden_activation:
-            output+=str(i)
-            output+="\n"
-        output+="\n---------------------\n"
-        
-        weightsFile.write(output)
-        weightsFile.close()
+    neuronNetwork=neuron.getNetwork()
+    
+    fileName="Details_Epoch_"+str(epoch)+".txt"
+    weightsFile= open(fileName, "w")
+    weightsFile.close()
 
-        
+    #Now created rewrite
+    weightsFile= open(fileName, "w")
+
+    output="\nFinal Epoch = "
+    output+=str(epoch)
+    output+="\nError = "
+    output+=neuron.getError()
+    output+="\n-------------------------\n"
+    output+="Final Learning Rate: "
+    output+=str(neuronNetwork.learning_rate)
+    output+="\n"
+    output+="Final Momentum: "
+    output+=str(neuronNetwork.momentum)
+    output+="\n"
+    output+="-------------------------\n"
+    output+="# IH Weights"
+    output+="\n-------------------------\n"
+    output += tabulate( neuronNetwork.IH_WEIGHTS)
+    
+    output+="\n-------------------------\n"
+    output+="# HO Weights"
+    output+="\n-------------------------\n"
+    output += tabulate( neuronNetwork.HO_WEIGHTS)
+    
+    
+    output+="\n-------------------------\n"
+    output+="# Input Final Changes"
+    output+="\n-------------------------\n"
+    output+= tabulate( neuronNetwork.input_change)
+    
+    
+    output+="\n-------------------------\n"
+    output+="# Output Final Changes"
+    output+="\n-------------------------\n"
+    output+= tabulate( neuronNetwork.output_change)
+
+    output+="\n-------------------------\n"
+    output+="# Input Activations"
+    output+="\n-------------------------\n"
+    
+
+    output+="---------------------\n"
+    for i in neuronNetwork.input_activation:
+        output+=str(i)
+        output+="\n"
+    output+="\n---------------------\n"
+    
+    output+="\n-------------------------\n"
+    output+="# Output Activations"
+    output+="\n-------------------------\n"
+    
+    output+="---------------------\n"
+    for i in neuronNetwork.output_activation:
+        output+=str(i)
+        output+="\n"
+    output+="\n---------------------\n"
+
+    output+="\n-------------------------\n"
+    output+="# Hidden Activations"
+    output+="\n-------------------------\n"
+    
+    output+="---------------------\n"
+    for i in neuronNetwork.hidden_activation:
+        output+=str(i)
+        output+="\n"
+    output+="\n---------------------\n"
+    
+    weightsFile.write(output)
+    weightsFile.close()
+
+    plotThis(neuronNetwork.IH_WEIGHTS)
+
 
 
 #--------------------------------------------------------------------------
@@ -558,165 +669,135 @@ class NETWORK:
 #                       END OF NEURAL NETWORK CLASS
 ##########################################################################
 #--------------------------------------------------------------------------
-        
+def plotThis(array):
+    y1=np.array(array)
+    plt.plot(y1)
+    plt.show()       
        
 
 ###########################################################################
 #   Plot graphical view of errors
 ###########################################################################
-def plot_errors(error):
+def plot_errors(error,TYPE):
+    
     fig = plt.figure()
     ax = fig.add_subplot(1,1,1)
-    
     #----------------------------------------------------------------------
     y1=np.array(error)
     #----------------------------------------------------------------------
- 
-    ax.plot(y1,'r')
-
-    plt.ylim((0.00,0.03))
-
-    fig.savefig('ErrorPlots.pdf')
-    fig.show()
+  
+    if TYPE == 0:
+        ax.plot(y1,'r')
+        fig.savefig('TrainingSetErrors.pdf')
+    
+    elif TYPE == 1:
+        ax.plot(y1,'g')
+        fig.savefig('ValidationSetErrors.pdf')
+    
+        
 
 
 ###########################################################################
 #   Take Output readings and Prediction readings and plot 
 #   against each other.
 ###########################################################################
-def smooth_plot(actual,pred,epochs):
+def smooth_plot(actual,pred,TYPE):
     
     fig = plt.figure()
     ax = fig.add_subplot(1,1,1)
 
+    x1 =np.array( vector( len(actual) ) )
     y1=np.array(actual)
-    
+
+    x2 =np.array( vector( len(pred) ) )
     y2=np.array(pred)
 
-    ax.plot(y1,'r')
-    ax.plot(y2,'b')
-
-    plt.title("Output (red), Prediction (blue), Epochs ="+str(epochs))
-    fig.savefig('PredictionsVSActual.pdf')
+    
+    x_smooth1 = np.linspace(x1.min(), x1.max(), 200)
+    y_smooth1 = spline(x1, y1, x_smooth1)
     
     
+    x_smooth2 = np.linspace(x2.min(), x2.max(), 200)
+    y_smooth2 = spline(x2, y2, x_smooth2)
+
+    ax.plot(x_smooth1,y_smooth1,'r')
+    ax.plot(x_smooth2,y_smooth2,'b')
 
 
-###########################################################################
-#   Return configured data to use in Neural Network with 
-#   Training and Testing.
-###########################################################################
-def createConfiguredData(start,end,data,maximumV):
-    #----------------------------------------------------------------------
-    # Create Empty Array
-    pat=[]
-    #----------------------------------------------------------------------
-    #Take Data from Document starting at (start) and ending at (end)
-    for i in range(start,end):
-        
-        innerArray1,innerArray2,innerArray3 = ([],[],[])
-        #----------------------------------------------------------------------
-        #Take from each column
-        for j in range(8):
-            inputNum = (data.getBy(str(j))[i]) / maximumV
-            innerArray1.append(inputNum)
-        #----------------------------------------------------------------------
-        #Output (Actual to Compare to Prediction)
-        outputNum = ( data.getBy("8")[i] ) / maximumV
-        
-        #Populate Inner arrays
-        innerArray2.append(outputNum)
-        innerArray3.append(innerArray1)
-        innerArray3.append(innerArray2)
-        
-        pat.append(innerArray3)
-    #----------------------------------------------------------------------
+    plt.title("output (red), prediction (blue)")
+    
+    if TYPE == 0:
+        fig.savefig('Training_Predictions.pdf')
 
-    return pat
+    elif TYPE == 1:
+        fig.savefig('Validation_Predictions.pdf')
+    
+
 
 ###########################################################################
 #                       Initiate Program 
 ###########################################################################
-def execute_MLP(trainingAmount,testingStart):
+def execute_MLP():
     #----------------------------------------------------------------------
     # Call class Data (populate data structure)
-    
+
     data = Data()
-    maximumV=4800
     #----------------------------------------------------------------------
     # Create Training and Test Data from CWKData.xlsx
     # Take 80% of data (400 epochs as default) and leave rest for testing
     
-    TRAINING_DATA=createConfiguredData(1,trainingAmount,data,maximumV) #TRAINING DATA
+    DATA_SET        =   300
+    INPUTS          =   8
+
+    #Data Variables
+    T_START         =   1
+    T_END           =   T_START    + int(DATA_SET * 0.7)
+    
+    TTS_START       =   T_END
+    TTS_END         =   TTS_START  + int(DATA_SET * 0.15)
+    
+    TST_START       =   TTS_END
+    TST_END         =   TST_START  + int(DATA_SET * 0.15)    
+
+
+    #CREATE NORMALISED DATA FROM FILE
+    TRAINING_DATA   = createNormalisedDataSet(  T_START,   T_END,   data,  INPUTS)
+    VALIDATION_DATA = createNormalisedDataSet(  TTS_START, TTS_END, data,  INPUTS)
+    TESTING_DATA    = createNormalisedDataSet(  TST_START, TST_END, data,  INPUTS)
+
+    #TRAINING_DATA=AND
+    #VALIDATION_DATA=AND
+    #TESTING_DATA=AND
 
     #----------------------------------------------------------------------
     # Assign lengths
-    
-    inputs=len(TRAINING_DATA[0][0])
-    hidden=len(TRAINING_DATA[0][0])
-    outputs=len(TRAINING_DATA[0][1])
+    inputs          = len(TRAINING_DATA[0][0])
+    hidden          = len(TRAINING_DATA[0][0])
+    outputs         = len(TRAINING_DATA[0][1])
     #----------------------------------------------------------------------
     # Create MultiLayer Perceptron Network
     
-    Network = NETWORK ( inputs, hidden, outputs, maximumV )    
     #----------------------------------------------------------------------
     # Train Network with 400 training examples (> 100 epochs) and (> 10 training patterns)
 
     #Start Testing data at 0 or ....
-    start=testingStart
-    while True:
-        print "________________________________________________"
-        option=raw_input("\nRun MLP program y/n? ")
+  
+    #------------------------------------------------------------------
+    
+    Network         = NETWORK ( inputs, hidden, outputs)    
+    
+    #Training Set
+    Network.TRAIN_WITH(  TRAINING_DATA  ,500,0)
 
-        if option == "y":
-            print "________________________________________________"
-            #Epoch Input
-            trainingEpochs=int(raw_input("\nHow many epochs: "))
+    #Validation Set
+    Network.TRAIN_WITH(  VALIDATION_DATA,2000,1)
+    
+    #Testing Set
+    Network.TEST(TESTING_DATA,0)
 
-            if(trainingEpochs < 100):
-                trainingEpochs = 100
+    return Network
 
-            print "________________________________________________"
-            #Training samples
-            trainingExamples=int(raw_input("\nNo. of test patterns: "))
+    #------------------------------------------------------------------
 
-            if(trainingExamples < 10):
-                trainingExamples = 10
+network=execute_MLP()
 
-            print "________________________________________________"
-
-            #Create Training data given input
-            TESTING_DATA = createConfiguredData(start,start\
-                    + trainingExamples , data , maximumV )
-
-            #------------------------------------------------------------------
-            #Initiate Neural Network Training and Testing
-            Network.epochs=trainingEpochs
-            
-            #Train Network
-            Network.TRAIN_WITH( TRAINING_DATA, trainingEpochs)
-            
-            #Test Network
-            Network.TEST( TESTING_DATA )
-
-            #Increment start index for next testing sample
-            start+=trainingExamples
-
-            #Save Weights to File
-            Network.save_weights()
-            #------------------------------------------------------------------
-        
-        #Exit 
-        else:
-            exit()
-
-if __name__ == '__main__':
-    if len(sys.argv) > 2:
-
-        trainingAmount=int(sys.argv[1])
-        testingStart=int(sys.argv[2])
-
-        execute_MLP(trainingAmount,testingStart)
-    else:
-        #Default
-        execute_MLP(400,400)
