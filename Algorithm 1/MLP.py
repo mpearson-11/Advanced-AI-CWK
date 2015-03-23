@@ -39,10 +39,6 @@ def checkErrors(errors):
     else:
         return False 
 
-def mean(x):
-    return sum(x) / float(len(x))
-
-
 ###########################################################################
 # Populate an array with indexes (graphing)
 ###########################################################################
@@ -98,14 +94,12 @@ random.seed(0)
 #--------------------------------------------------------------------------
 ###########################################################################
 #                         ------------------------
-#                         |     NETWORK clone    |
+#                         |     NETWORK_ class    |
 #                         ------------------------
 ###########################################################################
-class NetworkClone:
+class NETWORK_:
     def __init__(self):
         pass
-
-
 ###########################################################################
 #                         ------------------------
 #                         |     NETWORK class    |
@@ -116,7 +110,7 @@ class NETWORK:
 
     def cloneState(self):
         #Create Neuron from clone and delete once allocated
-        networkClone=NetworkClone()
+        networkClone=NETWORK_()
         
         networkClone.learning_rate      = self.learning_rate
         networkClone.momentum           = self.momentum
@@ -134,6 +128,14 @@ class NETWORK:
         networkClone.trainingID         = self.trainingID
 
         return networkClone
+
+    def getNeurons(self,TYPE):
+    
+        if TYPE==0:
+            return self.__trainingNeurons
+
+        elif TYPE==0:
+            return self.__validationNeurons
     
     def __init__(self, number_of_inputs, number_of_hidden, \
                        number_of_outputs):
@@ -452,7 +454,7 @@ class NETWORK:
         print "\tShow every {0} epochs "\
                .format(epochs/100)
         print "________________________________________________"
-        print "\n\t(epoch number) := (error)\n"
+        print "\n(epoch number) := (error)\n"
 
         RMSE_=[]
         valNum=0
@@ -481,14 +483,12 @@ class NETWORK:
             RMSE_.append(error)
             valNum=self.bold_driver(RMSE_,valNum)
 
+            networkClone=self.cloneState()
+
+            self.__trainingNeurons.addNeuron(epoch,networkClone,RMSE_[epoch])
             #Validation Set
             if num == 1:
-                
-                networkClone=self.cloneState()
                 self.__validationNeurons.addNeuron(epoch,networkClone,RMSE_[epoch])
-                #Delete networkClone for memory efficiency
-                del networkClone
-                
                 if valNum >= 10:
                     print "\n\t# Finished Validation\n\n"
 
@@ -510,14 +510,16 @@ class NETWORK:
                         print "Terminating - (Minima was not found)\n\n Try a smaller Training Set\n\n !!!!"
                         return 
 
-                
-            print "\t({0}) := ({1}) lr: ={2}"\
+            
+            del networkClone #Delete networkClone for memory efficiency
+
+            print "{0} = {1} LR= {2}"\
             .format(epoch,error,self.learning_rate)
      
         #----------------------------------------------------------------------
         print "\n\t# Finished Training\n\n"
 
-        #Pass Neuron through save errors
+        #Save Errors to File
         self.save_errors(RMSE_)
     
 
@@ -553,7 +555,7 @@ class NETWORK:
 
         errorsFile.close()
 
-        plot_errors(errors,self.trainingID)
+        plot_errors(errors,self.TYPE)
 
 ###########################################################################
 #   Save Weights to File weights_activations.txt
@@ -586,7 +588,7 @@ def show(neuron,epoch):
 
     neuronNetwork=neuron.getNetwork()
     
-    fileName="Details_Epoch_"+str(epoch)+".txt"
+    fileName="Details.txt"
     weightsFile= open(fileName, "w")
     weightsFile.close()
 
@@ -597,70 +599,48 @@ def show(neuron,epoch):
     output+=str(epoch)
     output+="\nError = "
     output+=neuron.getError()
-    output+="\n-------------------------\n"
-    output+="Final Learning Rate: "
+
+    output+="\nFinal Learning Rate: "
     output+=str(neuronNetwork.learning_rate)
-    output+="\n"
-    output+="Final Momentum: "
+    output+="\nFinal Momentum: "
     output+=str(neuronNetwork.momentum)
     output+="\n"
-    output+="-------------------------\n"
-    output+="# IH Weights"
-    output+="\n-------------------------\n"
+
+    output+="\n# IH Weights\n"
     output += tabulate( neuronNetwork.IH_WEIGHTS)
     
-    output+="\n-------------------------\n"
-    output+="# HO Weights"
-    output+="\n-------------------------\n"
+    output+="\n# HO Weights\n"
     output += tabulate( neuronNetwork.HO_WEIGHTS)
     
-    
-    output+="\n-------------------------\n"
-    output+="# Input Final Changes"
-    output+="\n-------------------------\n"
+    output+="\n# Input Final Changes\n"
     output+= tabulate( neuronNetwork.input_change)
     
-    
-    output+="\n-------------------------\n"
-    output+="# Output Final Changes"
-    output+="\n-------------------------\n"
+    output+="\n# Output Final Changes\n"
     output+= tabulate( neuronNetwork.output_change)
-
-    output+="\n-------------------------\n"
-    output+="# Input Activations"
-    output+="\n-------------------------\n"
     
-
-    output+="---------------------\n"
+    output+="\n# Input Activations"
+    output+="\n---------------------\n"
     for i in neuronNetwork.input_activation:
         output+=str(i)
         output+="\n"
-    output+="\n---------------------\n"
-    
-    output+="\n-------------------------\n"
-    output+="# Output Activations"
-    output+="\n-------------------------\n"
-    
     output+="---------------------\n"
+    output+="# Output Activations"
+    output+="\n---------------------\n"
     for i in neuronNetwork.output_activation:
         output+=str(i)
-        output+="\n"
     output+="\n---------------------\n"
-
-    output+="\n-------------------------\n"
     output+="# Hidden Activations"
-    output+="\n-------------------------\n"
-    
-    output+="---------------------\n"
+    output+="\n---------------------\n"
     for i in neuronNetwork.hidden_activation:
         output+=str(i)
         output+="\n"
-    output+="\n---------------------\n"
+    output+="---------------------\n"
     
     weightsFile.write(output)
     weightsFile.close()
 
-    plotThis(neuronNetwork.IH_WEIGHTS)
+    plotThis(neuronNetwork.input_activation,'InputActivations')
+    plotThis(neuronNetwork.hidden_activation,'HiddenActivations')
 
 
 
@@ -669,10 +649,13 @@ def show(neuron,epoch):
 #                       END OF NEURAL NETWORK CLASS
 ##########################################################################
 #--------------------------------------------------------------------------
-def plotThis(array):
+def plotThis(array,name):
+    fig = plt.figure()
+    ax = fig.add_subplot(1,1,1)
+    #----------------------------------------------------------------------
     y1=np.array(array)
-    plt.plot(y1)
-    plt.show()       
+    ax.plot(y1,'r')
+    fig.savefig(name+".pdf")      
        
 
 ###########################################################################
