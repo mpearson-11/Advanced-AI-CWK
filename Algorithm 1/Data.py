@@ -3,8 +3,28 @@
 #   Data Class
 #   External Sources include:
 #       http://stackoverflow.com/questions/4371163/reading-xlsx-files-using-python
+import sys
+from pylab import *
+from string import *
 
-def normalise(ar,minM,maxM):
+
+def viaTan(ar,minM,maxM):
+    
+    e_min=minM
+    e_max=maxM
+
+    normalised=[]
+    for i in range(len(ar)):
+
+        top=float(ar[i] - e_min)
+        bottom=float(e_max - e_min)
+
+        normal = (2 * top) - 1
+        normalised.append(normal)
+
+    return normalised
+
+def viaSigma(ar,minM,maxM):
     
     e_min=minM
     e_max=maxM
@@ -15,6 +35,9 @@ def normalise(ar,minM,maxM):
         normalised.append(normal)
 
     return normalised
+
+def normalise(ar,minM,maxM):
+    return viaSigma(ar,minM,maxM)
 
 def NOT_AND(a,b):
     return  int(not(bool(a)) and bool(b) )
@@ -116,11 +139,30 @@ import math
 #   Training and Testing.
 ###########################################################################
 def createNormalisedDataSet(start,end,data,nSet):
-    #----------------------------------------------------------------------
+        #----------------------------------------------------------------------
     # Create Empty Array
     pat=[]
-    minimum=data.minN
-    maximum=data.maxN
+    minimum=0
+    maximum=0
+
+    maxim=[]
+    minim=[]
+
+    for i in range(start,end):
+        #Take from each column
+        array=[]
+        for j in range(nSet):
+            inputNum = (data.getBy(str(j))[i])
+            array.append(inputNum)
+
+        maxm=max(array)
+        minm=min(array)
+
+        maxim.append(maxm)
+        minim.append(minm)
+    
+    minimum=min(minim)
+    maximum=max(maxim)  
     #----------------------------------------------------------------------
     #Take Data from Document starting at (start) and ending at (end)
     for i in range(start,end):
@@ -270,3 +312,6 @@ class Data:
         for newObject in self.document:
             returnArray.append(newObject[tag])
         return returnArray
+
+if __name__ =="__main__":
+    epoch(int(sys.argv[1]),int(sys.argv[2]),int(sys.argv[3]))
