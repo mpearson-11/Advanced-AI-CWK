@@ -12,6 +12,7 @@ import pylab
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import spline
+import sys
 
 def vector(n):
     vector = []
@@ -19,7 +20,7 @@ def vector(n):
         vector.append(i)
     return vector
 
-def smooth_plot(actual,pred,name):
+def smooth_plot(actual,pred,name,title):
     
     fig = plt.figure()
     ax = fig.add_subplot(1,1,1)
@@ -42,8 +43,24 @@ def smooth_plot(actual,pred,name):
     ax.plot(x_smooth2,y_smooth2,'b')
 
 
-    plt.title("output (red), prediction (blue)")
+    plt.title(title)
 
+    fig.savefig(name+".pdf")
+
+def plot_errors(actual,name):
+    
+    fig = plt.figure()
+    ax = fig.add_subplot(1,1,1)
+
+    x1 =np.array( vector( len(actual) ) )
+    y1=np.array(actual)
+
+    x_smooth1 = np.linspace(x1.min(), x1.max(), 200)
+    y_smooth1 = spline(x1, y1, x_smooth1)
+  
+    ax.plot(x_smooth1,y_smooth1,'b')
+
+    plt.title(name)
     fig.savefig(name+".pdf")
     
 
@@ -82,30 +99,39 @@ def normalise(ar,minM,maxM):
 ############################################################
 
 ############################################################
-def setWeights(i,j):
+def setWeights(i,j,n):
     vector=[]
     for x in range(i):
-        vector.append([0.0] * j)
+        vector.append([n] * j)
     return vector
+
 ############################################################
 ############################################################
 def hyperbolic_tangent(n):
     return math.tanh(n)
 ############################################################
 def hyperbolic_tangent_dv(n):
-    return (1.0 - math.pow(n,2))
+    return (1.0 - math.pow(n,2) )
 ############################################################
-def generateRandFor(size):
+def generateRandFor(layer):
     # Return Random Number ( a <= n < b )
-    a = -2.0 / size
-    b = 2.0 / size
+    if layer == 0:
+        size=0.2
+    else:
+        size=2.0
+    a = -size
+    b = size
     number = (b - a) * random() + a
     return number
 
 ############################################################
 def sigmoid(n):
-    value = -1.0 * n
-    return 1.0 / (1.0 + math.exp(value))
+    try:
+        value = -1.0 * n
+        return 1.0 / (1.0 + math.exp(value) )
+    except:
+        print "Unexpected error:", sys.exc_info()[0]
+        raise
 ############################################################
 def sigmoid_dv(n):
     return ( 1.0 - n ) * n
