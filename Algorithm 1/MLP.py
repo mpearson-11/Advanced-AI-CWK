@@ -23,6 +23,7 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import spline
 from matplotlib.legend_handler import HandlerLine2D
 from cPickle import *
+from finalNetwork import *
 
 
 def plotNN(Network):
@@ -142,11 +143,12 @@ class Layer:
 #===============================================================
 class Layers:
     
-    def __init__(self):
+    def __init__(self,chosen):
         
         self.layers=[]
         self.NumNeurons=0
         self.NumLayers=0
+        self.chosen=chosen
         
     def addLayer(self,name,length):
         
@@ -167,7 +169,10 @@ class Layers:
         self.NumLayers=countL
 
     def __updateWeightSpace(self):
-        self.weights=setWeights(self.NumNeurons+1,self.NumNeurons+1,0.0)
+        if self.chosen == 1:
+            self.weights = chosenNetworkModelWeights()
+        else:
+            self.weights=setWeights(self.NumNeurons+1,self.NumNeurons+1,0.0)
         
         self.changes=setWeights(self.NumNeurons+1,self.NumNeurons+1,1.0)
 
@@ -185,10 +190,15 @@ class NN:
         self.weightDecayFactor=0.03
 
         #Add Input,Hidden and Output Layers
-        self.Network=Layers()
+        if name =="FinalNetwork":
+            self.Network=Layers(1)
+        else:
+            self.Network=Layers(0)
+
         self.Network.addLayer("Input",inputs)
         self.Network.addLayer("Hidden",hidden)
         self.Network.addLayer("Output",outputs)
+
         self.initialiseWeights()
 
         #Training and Validation arrays
@@ -427,7 +437,7 @@ class NN:
             #checkCount updates termination value
             self.checkCount(error,oldError)
 
-            if self.exitCounter > 10 or epoch > 1000:
+            if self.exitCounter > 8 or epoch > 1000:
                 #Go back 10 to minimum epoch/time 
 
                 epochMinima = epoch - 11
@@ -644,6 +654,8 @@ def getNetworkArrays(inputs,validation):
 #Input and Hidden Nodes
 
 def runNetwork():
+
+    data=Data()
     
     NETWORKS_PLOTTING=[]
 
@@ -667,7 +679,7 @@ def runNetwork():
     #   Network 2:
     #       (training 70% >fixed< ) (validation 20%)  (testing %10) 
     #       (8 inputs) (7 hidden) ( 1 output >fixed< ) 
-    #       5 training iterations per epoch
+    #       20 training iterations per epoch
     #
     #       Learning Rate = 0.5
     #       Momentum      = 0.8
@@ -699,7 +711,7 @@ def runNetwork():
     #   Network 4:
     #       (training 70% >fixed< ) (validation 20%)  (testing %10) 
     #       (8 inputs) (5 hidden) ( 1 output >fixed< ) 
-    #       5 training iterations per epoch
+    #       20 training iterations per epoch
     #
     #       Learning Rate = 0.4
     #       Momentum      = 0.8
@@ -730,7 +742,7 @@ def runNetwork():
     #   Network 6:
     #       (training 70% >fixed< ) (validation 20%)  (testing %10) 
     #       (8 inputs) (3 hidden) ( 1 output >fixed< ) 
-    #       5 training iterations per epoch
+    #       20 training iterations per epoch
     #
     #       Learning Rate = 0.3
     #       Momentum      = 0.8
@@ -740,6 +752,23 @@ def runNetwork():
     (n_train6,n_valid6,n_test6,n_output6) = getNetworkArrays(n6_input,0.20)
 
     Network6 = NN(n6_input,n6_hidden,n_output6,"Network6")
+
+    #-----------------------------------------------------------------------
+    #-----------------------------------------------------------------------
+    #   Final Network:
+    #       (training 70% >fixed< ) (validation 15%)  (testing %100) 
+    #       (8 inputs) (6 hidden) ( 1 output >fixed< ) 
+    #       15 training iterations per epoch
+    #
+    #       Learning Rate = 0.5
+    #       Momentum      = 0.9
+    #       Weight Decay  = 0.025
+    #
+    (f_input,f_hidden) =  (8,6)
+    (n_trainF,n_validF,n_testF,n_outputF) = getNetworkArrays(f_input,0.15)
+    n_testF= createNormalisedDataSet(  0, 560, data,  f_input)
+
+    FinalNetwork = NN(f_input,f_hidden,n_outputF,"FinalNetwork")
     
     
     while True:
@@ -838,6 +867,21 @@ def runNetwork():
                         Network6.plotLearning()
                         Network6.plotErrors()
                     
+                    elif n ==7:
+
+                        
+                        FinalNetwork.learning_rate      = 0.5
+                        FinalNetwork.momentum           = 0.9
+                        FinalNetwork.weightDecayFactor  = 0.025
+                        FinalNetwork.runProgram(n_trainF,n_validF,15)
+                        FinalNetwork.test(n_testF)
+                        
+                        saveNN(FinalNetwork,"FinalNetwork")
+                        
+                        FinalNetwork.plotPrediction()
+                        FinalNetwork.plotLearning()
+                        FinalNetwork.plotErrors()
+
                     else:
                         break
                 except:
@@ -879,7 +923,10 @@ def runNetwork():
                         print "Loaded Network 6"
                         Network6=loadNN("Network6")
                         plotNN(Network6)
-                       
+                    elif n==7:
+                        print "Loaded Final Network"
+                        FinalNetwork=loadNN("Final Network")
+                        plotNN( FinalNetwork)
                     else:
                         break
        
@@ -930,6 +977,11 @@ def runNetwork():
                     Network6.plotPrediction()
                     Network6.plotLearning()
                     Network6.plotErrors()
+                
+                elif n==7:
+                    FinalNetwork.plotPrediction()
+                    FinalNetwork.plotLearning()
+                    FinalNetwork.plotErrors()
                     
             except:
                 print "Couldnt Plot Network"

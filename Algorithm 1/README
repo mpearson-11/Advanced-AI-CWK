@@ -1,0 +1,7 @@
+Network Diagrams show pdf images of all 7 Networks after they have been run.
+Network Objects folder contains .bin files which can ne loaded by dragging the associated Network .bin into the root directory and selecting load network when program runs.
+
+In order to run the program you must have python 2.7 installed and 
+all scientific packages including matplotlib,plyab, scipy e.t.c
+
+To execute program type in 'python mlp.py in command line'
