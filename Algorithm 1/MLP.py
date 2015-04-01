@@ -21,8 +21,82 @@ import pylab
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import spline
-from NetworkManager import *
+from matplotlib.legend_handler import HandlerLine2D
 from cPickle import *
+
+
+def plotNN(Network):
+    Network.plotErrors()
+    Network.plotLearning()
+    Network.plotPrediction()
+
+def saveNN(Network,name):
+    File=open(name+"Object.bin","w")
+    dump(Network,File)
+    File.close()
+
+def loadNN(name):
+    File=open(name+"Object.bin","r")
+    Network=load(File)
+    File.close()
+    return Network
+
+
+#Load Network Chosen State
+def loadNetwork(networkName):
+    File=open(networkName,"r")
+    OBJECT = load( File )
+    File.close()
+    return OBJECT
+
+#Show State
+def showNetwork(network):
+    NETWORK = loadNetwork(network+".txt")
+
+    learning=NETWORK["learning"]
+    
+    changes=NETWORK["changes"]
+    weights=NETWORK["weights"]
+
+    neuronsI=NETWORK["i"]
+    neuronsJ=NETWORK["j"]
+    neuronsK=NETWORK["k"]
+
+
+    print "\n--------------------------------------------------------------"
+    print "Input Layer\n"
+    for nodeI in neuronsI:
+        print "Neuron number : {0} ".format(nodeI.n)
+    print "\n--------------------------------------------------------------"
+    print "Hidden Layer\n"
+    for nodeJ in neuronsJ:
+        print "Neuron number : {0} ".format(nodeJ.n)
+    print "\n--------------------------------------------------------------"
+    print "Output Layer\n"
+    for nodeK in neuronsK:
+        print "Neuron number : {0} ".format(nodeK.n)
+    print "\n--------------------------------------------------------------"
+    
+
+    print "\nInput -> Hidden Weights\n"
+    for nodeJ in neuronsJ:
+        j=nodeJ.n
+        
+        for nodeI in neuronsI:
+            i=nodeI.n 
+            print "w ({0} -> {1}) = {2}".format(i,j,weights[i][j]) 
+           
+    print "\n--------------------------------------------------------------"
+    print "\nHidden -> Output Weights\n"
+    for nodeK in neuronsK:
+        k=nodeK.n
+        
+        for nodeJ in neuronsJ:
+            j=nodeJ.n 
+    
+            print "w ({0} -> {1}) = {2}".format(j,k,weights[j][k]) 
+
+
 
 #===============================================================
 #===============================================================
@@ -117,36 +191,52 @@ class NN:
         self.Network.addLayer("Output",outputs)
         self.initialiseWeights()
 
+        #Training and Validation arrays
         self.trainingErrors=[]
         self.validationErrors=[]
+        
+        #Learning Rate Array from Training and Validation
+        self.learningRates=[]
+
+        #Prediction and Output Arrays based on Testing
+        self.testDataPredictions=[]
+        self.testDataOutputValues=[]
         self.testErrors=[]
 
         self.exitCounter=0
         print name +"  Created"
 #===============================================================    
     def captureState(self,epoch):
-        self.states[epoch]={}
-        self.states[epoch]["changes"]=self.getC()
-        self.states[epoch]["training"]=self.trainingErrors
-        self.states[epoch]["validation"]=self.validationErrors
-        self.states[epoch]["weights"]=self.getW()
+        self.states[str(epoch)]={}
+        
+        #Error State
+        self.states[str(epoch)]["training"]=self.trainingErrors
+        self.states[str(epoch)]["validation"]=self.validationErrors
+        
+        #Weight State
+        self.states[str(epoch)]["weights"]=self.getW()
+        self.states[str(epoch)]["changes"]=self.getC()
+        
+        #Learning State
+        self.states[str(epoch)]["learning"]=self.learningRates
 
-        #Only Keep 10 states (delete all others)
-        if epoch >= 11:
-            del self.states[epoch-11]
+        #Neurons
+        self.states[str(epoch)]["i"]=self.getLayerNeurons(0)
+        self.states[str(epoch)]["j"]=self.getLayerNeurons(1)
+        self.states[str(epoch)]["k"]=self.getLayerNeurons(2)
+
+        #Only Keep 12 states (delete all others) need 11th state
+        if epoch >= 12:
+            del self.states[str(epoch-12)]
  #===============================================================       
     def getStateTypeAt(self,epoch,name):
-        return self.states[epoch][name]
+        return self.states[str(epoch)][name]
 #===============================================================
-    def createFile(self,name):
-        self.fileName=self.netName+"_"+name
-        File=open(self.fileName,"w")
+    def saveNetwork(self,epoch):
+        File=open(self.netName+".txt","w")
+        dump(self.states[str(epoch)],File)
         File.close()
-#===============================================================
-    def saveOutput(self,output):
-        File=open(self.fileName,"a")
-        File.write(output)
-        File.close()
+        del self.states
 #===============================================================
     def getWeights(self,i1,i2):
         return self.getW()[i1][i2]
@@ -177,82 +267,37 @@ class NN:
 #===============================================================
     def feed_forward(self,inputs):
         
-        #output=""
-        #output+="\n--------------------------------------------------------------"
-        #output+="\n\tFeed Input Layer "
-        #output+="\n--------------------------------------------------------------\n"
-        
-
+        #Feed Input Layer
         for i in range(len(self.getLayerNeurons(0))):
             nodeI=self.getLayerNeurons(0)[i]
             nodeI.activation=inputs[i]
-            #output+="\na(i)[{0}]: {1}".format(nodeI.n,nodeI.activation)
-        #output+="\n-------------------------------------------\n"
-        
-        #output+="\n--------------------------------------------------------------"
-        #output+="\n\tFeed Hidden Layer "
-        #output+="\n--------------------------------------------------------------\n"
-
+          
+        #Feed Hidden Layer
         for nodeJ in self.getLayerNeurons(1):
-            
             sumI=0.0
             for nodeI in self.getLayerNeurons(0):
-                sumI += (self.getWeights(nodeI.n,nodeJ.n) * nodeI.activation)
-                #output+="S(j)[{0}] += {1} * {2}\n".format(nodeJ.n,self.getWeights(nodeI.n,nodeJ.n),nodeI.activation)
-            
-            #output+="\n"
+                sumI += (self.getWeights(nodeI.n,nodeJ.n) * nodeI.activation)  
             nodeJ.setSum(sumI,self.learning_rate)
 
-            #output+="\nS(j)[{0}]= {1}".format(nodeJ.n,nodeJ.S)
-            #output+="\na(j)[{0}]= {1} + S(j)[{0}]".format(nodeJ.n,nodeJ.bias,nodeJ.n)  
-            #output+="\n\na(j)[{0}]= sigmoid({1} + {2}) = {3}".format(nodeJ.n,nodeJ.bias,nodeJ.S,nodeJ.activation)
-            #output+="\n--------------------------------------------------------------\n"
-        
-        #output+="\n--------------------------------------------------------------"
-        #output+="\n\tFeed Output Layer "
-        #output+="\n--------------------------------------------------------------\n"
-        
+        # Feed Output Layer
         for nodeK in self.getLayerNeurons(2):
             sumJ=0.0
             
             for nodeJ in self.getLayerNeurons(1):
                 sumJ += (self.getWeights(nodeJ.n,nodeK.n) * nodeJ.activation)
-                
-                #output+="S(k)[{0}] += {1} * {2}\n".format(nodeK.n,self.getWeights(nodeJ.n,nodeK.n),nodeJ.activation)
-            
-            #output+="\n"
             nodeK.setSum(sumJ,self.learning_rate)
-
-            #output+="\nS(k)[{0}]= {1}".format(nodeK.n,nodeK.S)
-            #output+="\na(k)[{0}]= {1} + S(j)[{0}]".format(nodeK.n,nodeK.bias,nodeK.n)  
-            #output+="\n\na(k)[{0}]= sigmoid({1} + {2}) = {3}".format(nodeK.n,nodeK.bias,nodeK.S,nodeK.activation)
-                    
-
-        #output+="\n--------------------------------------------------------------"
-        #output+="\n--------------------------------------------------------------\n\n"
-        #self.saveOutput(output)
 
 #===============================================================
     def backPropagation(self,targets):
         
-        #Back Propagate Output Layer
-        #output=""
-        #output+="\n--------------------------------------------------------------"
-        #output+="\n\tBackpropagate Output Layer"
-        #output+="\n--------------------------------------------------------------"
+   
+        #BackPropagate Output Layer Calculating Changes
         for nodeK in self.getLayerNeurons(2):
             error = targets[0] - nodeK.activation
             delta = derivative_function( nodeK.activation ) * error
             nodeK.setDelta(delta)
             
-            #output+="\nz[k]={0} \n\ntarget[k]={1} \n\na[k] ={2} \n\ndelta=dv(z[k])* ( target[k] - a[k] )\n".format(nodeK.S,targets[0],nodeK.activation)
-            #output+="\ndl(k)[{0}] = dv({1}) * ({2} - {3})".format(nodeK.n, nodeK.S,targets[0],nodeK.activation)
-            #output+="\n= {0}".format(nodeK.delta)
-
-
-        #output="\n--------------------------------------------------------------"
-        #output+="\n\tUpdating Output Weights"
-        #output+="\n--------------------------------------------------------------"
+        #Update Output Weights
         for nodeJ in self.getLayerNeurons(1):
             for nodeK in self.getLayerNeurons(2):
                 j=nodeJ.n
@@ -269,19 +314,8 @@ class NN:
 
                 changes=self.getC()
                 self.getC()[j][k]=change
-                #output+="\n\nlr = {0}\n".format(self.learning_rate)
-                #output+="dl(k)[{0}] = {1}\n".format(k,nodeK.delta)
-                #output+="a(j)[{0}] = {1}\n".format(j,nodeJ.activation)
-                #output+="old w[{0}][{1}] = {2}\n".format(j,k,oldWeight)
-                #output+="\n--------------------------------------------------------------"
-                #output+="\nnew w[{0}][{1}] = {2} + ({3} * {4} * {5}) = {6}\n".format(j,k,oldWeight,\
-                #    self.learning_rate,nodeK.delta,nodeJ.activation,self.getWeights(j,k))
-                #output+="\n--------------------------------------------------------------"
         
-        #Back Propagate Hidden Layer
-        #output+="\n--------------------------------------------------------------"
-        #output+="\n\tBackpropagate Hidden Layer"
-        #output+="\n--------------------------------------------------------------"
+        #BackPropagate Hidden Layer Calculating Changes
         for nodeJ in self.getLayerNeurons(1):
             error=0.0
             for nodeK in self.getLayerNeurons(2):
@@ -289,14 +323,8 @@ class NN:
 
             delta = derivative_function( nodeJ.activation  ) * error
             nodeJ.setDelta(delta)
-            #output+="\nz[j]={0} \nerror = sigma( delta[k] * w[j][k] ) = {1} \ndelta = dv(z[j]) * error \n".format(nodeJ.S,error)
-            #output+="\ndl(j)[{0}] = dv({1}) * {2}".format(nodeJ.n,nodeJ.S,error)
-            #output+="\n= {0}".format(nodeJ.delta)
-
-        #Update Hidden Layer
-        #output+="\n--------------------------------------------------------------"
-        #output+="\n\tUpdating Hidden Weights"
-        #output+="\n--------------------------------------------------------------"
+            
+        #Update Hidden Weights
         for nodeJ in self.getLayerNeurons(1):
             for nodeI in self.getLayerNeurons(0):
                 i=nodeI.n
@@ -314,41 +342,27 @@ class NN:
                 changes=self.getC()
                 self.getC()[i][j]=change
 
-                #output+="\n\nlr = {0}\n".format(self.learning_rate)
-                #output+="dl(j)[{0}] = {1}\n".format(j,nodeJ.delta)
-                #output+="a(i)[{0}] = {1}\n".format(i,nodeI.activation)
-                #output+="old w[{0}][{1}] = {2}\n".format(i,j,oldWeight)
-                #output+="\nold change ={0}\n".format(change)
-                #output+="\nnew change ={0}\n".format(oldChange)
-                #output+="\n--------------------------------------------------------------"
-                #output+="\nnew w[{0}][{1}] = {2} + ({3} * {4} * {5}) = {6}\n".format(i,j,oldWeight,\
-                #    self.learning_rate,nodeJ.delta,nodeI.activation,self.getWeights(i,j))
-                #output+="\n--------------------------------------------------------------"
-
-        #output+="\n------------------------------------\n"
-        #output+="\n--------------------------------------------------------------"
-        #output+="\n--------------------------------------------------------------\n\n"
-        #self.saveOutput(output)
-     
 #===============================================================
     def decayWeights(self,epoch):
+        #Decay weights from hidden to output
         for nodeK in self.getLayerNeurons(2):
             for nodeJ in self.getLayerNeurons(1):
                 k=nodeK.n 
                 j=nodeJ.n 
+                #Decay based on weight changes in last epoch
                 self.getC()[j][k] -= (self.weightDecayFactor *  self.getStateTypeAt(epoch-1,"changes")[j][k] )
 
-
+        #Decay weights from input to hidden
         for nodeJ in self.getLayerNeurons(1):
             for nodeI in self.getLayerNeurons(0):
                 j=nodeJ.n 
                 i=nodeI.n 
+                #Decay based on weight changes in last epoch
                 self.getC()[i][j] -= (self.weightDecayFactor *  self.getStateTypeAt(epoch-1,"changes")[i][j] ) 
 #===============================================================
     def train(self,examples,iterations):
-
-        Errors=[]
-        
+        #Train Network on given iterations before validation
+        outError=0.0
         for i in range(iterations):
             error=0.0
             for values in examples:
@@ -361,24 +375,25 @@ class NN:
 
                 error += self.getError(outputs)
 
-        error = math.sqrt( error / 2.0 )
-        Errors.append(error)
-        return Errors
+        outError = math.sqrt( error / len(examples) )
+        return outError 
 
 #===============================================================     
     def runProgram(self,TRAIN,VALID,n):
         
-        print "Running : "+self.netName
+        print "\nRunning : "+self.netName+"\n"
         oldError=0.0
         error=0.0
         epoch=0
+        self.validationErrors=[]
+        self.trainingErrors=[]
+        self.learningRates=[]
 
         while True:
 
             #Train with n iterations
-            self.trainingErrors=self.train(TRAIN,n)
-            self.validationErrors=[]
-
+            trainError = self.train(TRAIN,n)
+           
             oldError=error
             error=0.0
 
@@ -392,8 +407,11 @@ class NN:
 
                 error += self.getError(outputs)
 
-            error = math.sqrt( error / 2.0 )
+            error = math.sqrt( error / len(VALID) )
+            
             self.validationErrors.append(error)
+            self.trainingErrors.append(trainError)
+            self.learningRates.append(self.learning_rate)
 
             self.bold_driver(error,oldError)
             
@@ -401,17 +419,18 @@ class NN:
             self.captureState(epoch)
             
             if epoch > 1:
+                #Decay Weight after first epoch
                 self.decayWeights(epoch)
             
-            print "{0} Error = {1} LR = {2}".format(epoch,error,self.learning_rate)
+            print "Epoch = {0} Error = {1} LR = {2}".format(epoch,error,self.learning_rate)
            
             #checkCount updates termination value
             self.checkCount(error,oldError)
 
-            if self.exitCounter > 10 or epoch > 500:
+            if self.exitCounter > 10 or epoch > 1000:
                 #Go back 10 to minimum epoch/time 
 
-                epochMinima = epoch - 10
+                epochMinima = epoch - 11
                 
                 #Override all Network Weights for Best test data 
                 #based on minima termination weights
@@ -420,32 +439,36 @@ class NN:
                 self.Network.weights     = self.getStateTypeAt(epochMinima, 'weights'    )
                 self.Network.changes     = self.getStateTypeAt(epochMinima, 'changes'    )
 
-                del self.states
-
                 print "\n\n------------------------------------------"
                 print "\nEpochs: "+str(epoch)
-                print "\nExit Counter: "+str(self.exitCounter)
+                print "\nEpoch Minimum "+str(epochMinima)
                 print "\n------------------------------------------"
+                print "\n Network {0} saved state under: {1}.txt   ".format(self.netName,self.netName)
+                self.saveNetwork(epochMinima)
                 break
             
             else:
                 epoch+=1
 
+       
+
 #===============================================================
     def test(self,examples):
 
-        predictions=[]
-        actualValues=[]
+        self.testDataPredictions=[]
+        self.testDataOutputValues=[]
+        self.testErrors=[]
 
         for values in examples:
             self.feed_forward(values[0])
             actual=values[1]
             predictor=self.getPrediction()
-            print "Actual : {0} Prediction: {1}".format(actual[0],predictor)
-            predictions.append(predictor)
-            actualValues.append(actual[0])
+            self.testDataPredictions.append(predictor)
+            self.testDataOutputValues.append(actual[0])
 
-        smooth_plot(actualValues,predictions,"Predictions","output (red), prediction (blue)")
+            error = self.getError(values[0])
+            self.testErrors.append(error)
+
 #===============================================================
     def initialiseWeights(self):
 
@@ -500,11 +523,10 @@ class NN:
         else:
             self.exitCounter+=1   
 #===============================================================
-    def plotAll(self):
-        fig = plt.figure()
-        ax = fig.add_subplot(1,1,1)
+    def plotErrors(self):
 
-        #Training Plot
+        plt.figure()
+        
         x1 =np.array( vector( len(self.trainingErrors) ) )
         y1 = np.array(self.trainingErrors)
 
@@ -519,15 +541,62 @@ class NN:
         y_smooth2 = spline(x2, y2, x_smooth2)
 
       
-        ax.plot(x_smooth1,y_smooth1,'r')
-        ax.plot(x_smooth2,y_smooth2,'g')
+        line1,=plt.plot(x_smooth1,y_smooth1,'r',label="training errors")
+        line2,=plt.plot(x_smooth2,y_smooth2,'g',label="validation errors")
+        
+        plt.legend(handler_map={line1: HandlerLine2D(numpoints=4)})
+        
+        plt.ylabel("RMS Error")
+        plt.xlabel("Epoch Number")
 
-        plt.title("Red = Train, Green = Validate")
-        fig.savefig("Plot.pdf")
+        plt.title(self.netName+" Validation and Training Errors")
+        plt.savefig(self.netName+"_Errors.pdf")
 
 #===============================================================
-#===============================================================
+    def plotLearning(self):
+        plt.figure()
+       
+        #Learning Rate Plot
+        x1 =np.array( vector( len( self.learningRates ) ) )
+        y1 = np.array( self.learningRates )
 
+        x_smooth1 = np.linspace(x1.min(), x1.max(), 200)
+        y_smooth1 = spline(x1, y1, x_smooth1)
+
+        plt.plot(x_smooth1,y_smooth1,'r')
+        plt.ylabel("Learning parameter")
+
+        plt.title(self.netName+" Learning Rates")
+        plt.savefig(self.netName+"_Learning.pdf")
+#===============================================================
+#===============================================================
+    def plotPrediction(self):
+        
+        plt.figure()
+
+        x1 = np.array(vector( len(self.testDataOutputValues) ) )
+        y1 = np.array(self.testDataOutputValues)
+
+        x2 = np.array(vector( len(self.testDataPredictions) ) )
+        y2 = np.array(self.testDataPredictions)
+
+        x_smooth1 = np.linspace(x1.min(), x1.max(), 200)
+        y_smooth1 = spline(x1, y1, x_smooth1)
+        
+        x_smooth2 = np.linspace(x2.min(), x2.max(), 200)
+        y_smooth2 = spline(x2, y2, x_smooth2)
+
+        line1,=plt.plot(x_smooth1,y_smooth1,'r',label="output values")
+        line2,=plt.plot(x_smooth2,y_smooth2,'b',label="prediction values")
+
+        plt.ylabel("Normalised Data Value")
+        plt.xlabel("Epoch Number")
+
+        plt.legend(handler_map={line1: HandlerLine2D(numpoints=4)})
+
+        plt.title(self.netName+" Predictions")
+
+        plt.savefig(self.netName+"_Predictions.pdf")
 
 
 
@@ -574,15 +643,16 @@ def getNetworkArrays(inputs,validation):
 
 #Input and Hidden Nodes
 
-def runNetwork(n):
+def runNetwork():
     
+    NETWORKS_PLOTTING=[]
 
     #-----------------------------------------------------------------------
     #-----------------------------------------------------------------------
     #   Network 1:
     #       (training 70% >fixed< ) (validation 15%)  (testing %15) 
     #       (8 inputs) (8 hidden) ( 1 output >fixed< ) 
-    #       20 training iterations per epoch
+    #       10 training iterations per epoch
     #
     #       Learning Rate = 0.5
     #       Momentum      = 0.9
@@ -596,14 +666,14 @@ def runNetwork(n):
     #-----------------------------------------------------------------------
     #   Network 2:
     #       (training 70% >fixed< ) (validation 20%)  (testing %10) 
-    #       (8 inputs) (4 hidden) ( 1 output >fixed< ) 
-    #       18 training iterations per epoch
+    #       (8 inputs) (7 hidden) ( 1 output >fixed< ) 
+    #       5 training iterations per epoch
     #
     #       Learning Rate = 0.5
     #       Momentum      = 0.8
     #       Weight Decay  = 0.025
     #
-    (n2_input,n2_hidden) =  (8,4)
+    (n2_input,n2_hidden) =  (8,7)
     (n_train2,n_valid2,n_test2,n_output2) = getNetworkArrays(n2_input,0.20)
 
     Network2 = NN(n2_input,n2_hidden,n_output2,"Network2")
@@ -612,14 +682,14 @@ def runNetwork(n):
     #-----------------------------------------------------------------------
     #   Network 3:
     #       (training 70% >fixed< ) (validation 15%)  (testing %15) 
-    #       (6 inputs) (8 hidden) ( 1 output >fixed< ) 
-    #       16 training iterations per epoch
+    #       (8 inputs) (6 hidden) ( 1 output >fixed< ) 
+    #       10 training iterations per epoch
     #
     #       Learning Rate = 0.4
     #       Momentum      = 0.9
     #       Weight Decay  = 0.025
     #
-    (n3_input,n3_hidden) =  (6,8)
+    (n3_input,n3_hidden) =  (8,6)
     (n_train3,n_valid3,n_test3,n_output3) = getNetworkArrays(n3_input,0.15)
 
     Network3 = NN(n3_input,n3_hidden,n_output3,"Network3")
@@ -628,14 +698,14 @@ def runNetwork(n):
     #-----------------------------------------------------------------------
     #   Network 4:
     #       (training 70% >fixed< ) (validation 20%)  (testing %10) 
-    #       (6 inputs) (4 hidden) ( 1 output >fixed< ) 
-    #       14 training iterations per epoch
+    #       (8 inputs) (5 hidden) ( 1 output >fixed< ) 
+    #       5 training iterations per epoch
     #
     #       Learning Rate = 0.4
     #       Momentum      = 0.8
     #       Weight Decay  = 0.020
     #
-    (n4_input,n4_hidden) =  (6,4)
+    (n4_input,n4_hidden) =  (8,5)
     (n_train4,n_valid4,n_test4,n_output4) = getNetworkArrays(n4_input,0.20)
     Network4 = NN(n4_input,n4_hidden,n_output4,"Network4")
 
@@ -643,14 +713,14 @@ def runNetwork(n):
     #-----------------------------------------------------------------------
     #   Network 5:
     #       (training 70% >fixed< ) (validation 15%)  (testing %15) 
-    #       (4 inputs) (8 hidden) ( 1 output >fixed< ) 
-    #       16 training iterations per epoch
+    #       (8 inputs) (4 hidden) ( 1 output >fixed< ) 
+    #       10 training iterations per epoch
     #
     #       Learning Rate = 0.3
     #       Momentum      = 0.9
     #       Weight Decay  = 0.020
     #
-    (n5_input,n5_hidden) =  (4,8)
+    (n5_input,n5_hidden) =  (8,4)
     (n_train5,n_valid5,n_test5,n_output5) = getNetworkArrays(n5_input,0.15)
 
     Network5 = NN(n5_input,n5_hidden,n_output5,"Network5")
@@ -659,81 +729,215 @@ def runNetwork(n):
     #-----------------------------------------------------------------------
     #   Network 6:
     #       (training 70% >fixed< ) (validation 20%)  (testing %10) 
-    #       (4 inputs) (4 hidden) ( 1 output >fixed< ) 
-    #       16 training iterations per epoch
+    #       (8 inputs) (3 hidden) ( 1 output >fixed< ) 
+    #       5 training iterations per epoch
     #
     #       Learning Rate = 0.3
     #       Momentum      = 0.8
     #       Weight Decay  = 0.015
     #
-    (n6_input,n6_hidden) =  (4,4)
+    (n6_input,n6_hidden) =  (8,3)
     (n_train6,n_valid6,n_test6,n_output6) = getNetworkArrays(n6_input,0.20)
 
     Network6 = NN(n6_input,n6_hidden,n_output6,"Network6")
-
-    #Run Network 1
-    if n == 1:
-        Network1.learning_rate      = 0.5
-        Network1.momentum           = 0.9
-        Network1.weightDecayFactor  = 0.03
-
-        Network1.runProgram(n_train1,n_valid1,20)
-        Network1.test(n_test1)
-
     
-    #Run Network 2
-    elif n == 2:
-        Network2.learning_rate      = 0.5
-        Network2.momentum           = 0.8
-        Network2.weightDecayFactor  = 0.025
-
-        Network2.runProgram(n_train2,n_valid2,18)
-        Network2.test(n_test2)
-
     
-    #Run Network 3
-    elif n == 3:
-        Network3.learning_rate      = 0.4
-        Network3.momentum           = 0.9
-        Network3.weightDecayFactor  = 0.025
+    while True:
+        print "\n-----------------------------\n"
+        print "1. Run Network"
+        print "2. Load Network"
+        print "3. View All Learning Rate changes"
+        print "4. View Network Plots"
+        print "5. Exit\n"
+        print "-----------------------------\n"
 
-        Network3.runProgram(n_train3,n_valid3,16)
-        Network3.test(n_test3)
-
-
-    #Run Network 4
-    elif n == 4:
-        Network4.learning_rate      = 0.4
-        Network4.momentum           = 0.8
-        Network4.weightDecayFactor  = 0.020
-
-        Network4.runProgram(n_train4,n_valid4,14)
-        Network4.test(n_test4)
-
+        try:
+            n=int(raw_input("\noption: "))
+        except:
+            break;
     
-    #Run Network 5
-    elif n == 5:
-        Network5.learning_rate      = 0.3
-        Network5.momentum           = 0.9
-        Network5.weightDecayFactor  = 0.020
+        if n==1:
+            while True:
+                try:
+                    n=int(raw_input("\nWhich Network: "))
+                    #Run Network 1
+                    if n == 1:
+                        Network1.learning_rate      = 0.5
+                        Network1.momentum           = 0.9
+                        Network1.weightDecayFactor  = 0.03
+                        Network1.runProgram(n_train1,n_valid1,10)
+                        Network1.test(n_test1)
+                        saveNN(Network1,"Network1")
+                        Network1.plotPrediction()
+                        Network1.plotLearning()
+                        Network1.plotErrors()
 
-        Network5.runProgram(n_train5,n_valid5,12)
-        Network5.test(n_test5)
+                    #Run Network 2
+                    elif n == 2:
+                        Network2.learning_rate      = 0.5
+                        Network2.momentum           = 0.8
+                        Network2.weightDecayFactor  = 0.025
+                        Network2.runProgram(n_train2,n_valid2,20)
+                        Network2.test(n_test2)
+                        saveNN(Network2,"Network2")
+                        Network2.plotPrediction()
+                        Network2.plotLearning()
+                        Network2.plotErrors()
 
+                    #Run Network 3
+                    elif n == 3:
+                        Network3.learning_rate      = 0.4
+                        Network3.momentum           = 0.9
+                        Network3.weightDecayFactor  = 0.025
+                        Network3.runProgram(n_train3,n_valid3,10)
+                        Network3.test(n_test3)
+                        saveNN(Network3,"Network3")
+                        Network3.plotPrediction()
+                        Network3.plotLearning()
+                        Network3.plotErrors()
 
-    #Run Network 6
-    elif n == 6:
-        Network6.learning_rate      = 0.3
-        Network6.momentum           = 0.8
-        Network6.weightDecayFactor  = 0.015
+                    #Run Network 4
+                    elif n == 4:
+                        Network4.learning_rate      = 0.4
+                        Network4.momentum           = 0.8
+                        Network4.weightDecayFactor  = 0.020
+                        Network4.runProgram(n_train4,n_valid4,20)
+                        Network4.test(n_test4)
+                        
+                        saveNN(Network4,"Network4")
+                        
+                        Network4.plotPrediction()
+                        Network4.plotLearning()
+                        Network4.plotErrors()
+                    
+                    #Run Network 5
+                    elif n == 5:
+                        Network5.learning_rate      = 0.3
+                        Network5.momentum           = 0.9
+                        Network5.weightDecayFactor  = 0.020
+                        Network5.runProgram(n_train5,n_valid5,10)
+                        Network5.test(n_test5)
+                        
+                        saveNN(Network5,"Network5")
+                        
+                        Network5.plotPrediction()
+                        Network5.plotLearning()
+                        Network5.plotErrors()
 
-        Network6.runProgram(n_train6,n_valid6,10)
-        Network6.test(n_test6)
+                    #Run Network 6
+                    elif n == 6:
+                        Network6.learning_rate      = 0.3
+                        Network6.momentum           = 0.8
+                        Network6.weightDecayFactor  = 0.015
+                        Network6.runProgram(n_train6,n_valid6,20)
+                        Network6.test(n_test6)
+                        
+                        saveNN(Network6,"Network6")
+                        
+                        Network6.plotPrediction()
+                        Network6.plotLearning()
+                        Network6.plotErrors()
+                    
+                    else:
+                        break
+                except:
+                    break
 
+        elif n==2:
 
+            while True:
+                
+                try:
+                    n=int(raw_input("Which Network: "))
+                
+                    if n==1:
+                        print "Loaded Network 1"
+                        Network1=loadNN("Network1")
+                        plotNN(Network1)
+                       
+                    elif n==2:
+                        print "Loaded Network 2"
+                        Network2=loadNN("Network2")
+                        plotNN(Network2)
+                        
+                    elif n==3:
+                        print "Loaded Network 3"
+                        Network3=loadNN("Network3")
+                        plotNN(Network3)
+                        
+                    elif n==4:
+                        print "Loaded Network 4"
+                        Network4=loadNN("Network4")
+                        plotNN(Network4)
+                        
+                    elif n==5:
+                        print "Loaded Network 5"
+                        Network5=loadNN("Network5")
+                        plotNN(Network5)
+                        
+                    elif n==6:
+                        print "Loaded Network 6"
+                        Network6=loadNN("Network6")
+                        plotNN(Network6)
+                       
+                    else:
+                        break
+       
+                except:
+                    break
+        
+        elif n==3:
 
+            NETWORKS_PLOTTING.append({"array":loadNetwork("Network1.txt")["learning"],"label":"Network1"})
+            NETWORKS_PLOTTING.append({"array":loadNetwork("Network2.txt")["learning"],"label":"Network2"})
+            NETWORKS_PLOTTING.append({"array":loadNetwork("Network3.txt")["learning"],"label":"Network3"})
+            NETWORKS_PLOTTING.append({"array":loadNetwork("Network4.txt")["learning"],"label":"Network4"})
+            NETWORKS_PLOTTING.append({"array":loadNetwork("Network5.txt")["learning"],"label":"Network5"})
+            NETWORKS_PLOTTING.append({"array":loadNetwork("Network6.txt")["learning"],"label":"Network6"})
 
+            plotNetworks(NETWORKS_PLOTTING,"Network Learning Rates","NetworksLR")
+        
+        elif n==4:
+            n=int(raw_input("Which Network: "))
+            
+            try:
+                if n==1:
+                    Network1.plotPrediction()
+                    Network1.plotLearning()
+                    Network1.plotErrors()
+                   
+                elif n==2:
+                    Network2.plotPrediction()
+                    Network2.plotLearning()
+                    Network2.plotErrors()
+                    
+                elif n==3:
+                    Network3.plotPrediction()
+                    Network3.plotLearning()
+                    Network3.plotErrors()
+                   
+                elif n==4:
+                    Network4.plotPrediction()
+                    Network4.plotLearning()
+                    Network4.plotErrors()
+                    
+                elif n==5:
+                    Network5.plotPrediction()
+                    Network5.plotLearning()
+                    Network5.plotErrors()
+                   
+                elif n==6:
+                    Network6.plotPrediction()
+                    Network6.plotLearning()
+                    Network6.plotErrors()
+                    
+            except:
+                print "Couldnt Plot Network"
+                exit()
+        else:
+            break;
+
+   
 if __name__=="__main__":
-    option=int(raw_input("Network 1,2,3,4,5,6? "))
-    runNetwork(option)
+    runNetwork()
 

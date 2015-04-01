@@ -12,6 +12,7 @@ import pylab
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import spline
+from matplotlib.legend_handler import HandlerLine2D
 import sys
 
 def vector(n):
@@ -20,49 +21,39 @@ def vector(n):
         vector.append(i)
     return vector
 
-def smooth_plot(actual,pred,name,title):
-    
-    fig = plt.figure()
-    ax = fig.add_subplot(1,1,1)
-
-    x1 =np.array( vector( len(actual) ) )
-    y1=np.array(actual)
-
-    x2 =np.array( vector( len(pred) ) )
-    y2=np.array(pred)
+def plotNetworks(Network,title,save):
+        
+    plt.figure()
 
     
-    x_smooth1 = np.linspace(x1.min(), x1.max(), 200)
-    y_smooth1 = spline(x1, y1, x_smooth1)
-    
-    
-    x_smooth2 = np.linspace(x2.min(), x2.max(), 200)
-    y_smooth2 = spline(x2, y2, x_smooth2)
+    l1 = Network[0]["array"]
+    l2 = Network[1]["array"]
+    l3 = Network[2]["array"]
+    l4 = Network[3]["array"]
+    l5 = Network[4]["array"]
+    l6 = Network[5]["array"]
 
-    ax.plot(x_smooth1,y_smooth1,'r')
-    ax.plot(x_smooth2,y_smooth2,'b')
+    line1,=plt.plot(l1,label=Network[0]["label"])
+    line2,=plt.plot(l2,label=Network[1]["label"])
+    line3,=plt.plot(l3,label=Network[2]["label"])
+    line4,=plt.plot(l4,label=Network[3]["label"])
+    line5,=plt.plot(l5,label=Network[4]["label"])
+    line6,=plt.plot(l6,label=Network[5]["label"])
 
+    plt.legend(handler_map={line1: HandlerLine2D(numpoints=4)})
+    plt.legend(handler_map={line2: HandlerLine2D(numpoints=4)})
+    plt.legend(handler_map={line3: HandlerLine2D(numpoints=4)})
+    plt.legend(handler_map={line4: HandlerLine2D(numpoints=4)})
+    plt.legend(handler_map={line5: HandlerLine2D(numpoints=4)})
+    plt.legend(handler_map={line6: HandlerLine2D(numpoints=4)})
+
+    plt.ylim((0,1))
+
+    plt.xlabel("Epoch Number")
 
     plt.title(title)
 
-    fig.savefig(name+".pdf")
-
-def plot_errors(actual,name):
-    
-    fig = plt.figure()
-    ax = fig.add_subplot(1,1,1)
-
-    x1 =np.array( vector( len(actual) ) )
-    y1=np.array(actual)
-
-    x_smooth1 = np.linspace(x1.min(), x1.max(), 200)
-    y_smooth1 = spline(x1, y1, x_smooth1)
-  
-    ax.plot(x_smooth1,y_smooth1,'b')
-
-    plt.title(name)
-    fig.savefig(name+".pdf")
-    
+    plt.savefig(save+".pdf")
 
 ############################################################
 def viaTan(ar,minM,maxM):
@@ -98,14 +89,12 @@ def normalise(ar,minM,maxM):
 
 ############################################################
 
-############################################################
 def setWeights(i,j,n):
     vector=[]
     for x in range(i):
         vector.append([n] * j)
     return vector
 
-############################################################
 ############################################################
 def hyperbolic_tangent(n):
     return math.tanh(n)
@@ -144,11 +133,6 @@ def derivative_function(n):
     #return hyperbolic_tangent_dv(n)
     return sigmoid_dv(n)
 ############################################################
-def anneal(x,r):
-    bottom = 1.0 + math.exp(10.0 - (20.0 * x / r) ) 
-    return 1.0 - (1.0 / bottom)
-############################################################
-
 
 import os
 import math
@@ -213,10 +197,7 @@ def createNormalisedDataSet(start,end,data,nSet):
     #----------------------------------------------------------------------
     return pat
 ############################################################
-def showLegend(Data):
-    os.system('clear')
-    for i,j in Data.tagLine.items():
-        print "{0} = {1}".format(i,j)
+
 
 class Data:
     def __init__(self):
