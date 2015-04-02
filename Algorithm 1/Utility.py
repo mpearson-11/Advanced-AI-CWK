@@ -1,4 +1,4 @@
-#   @Copywright Max Pearson
+#   Student Name: Max Pearson
 #   Student ID: B123103
 #   Data Class
 #   External Sources include:
@@ -14,6 +14,9 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import spline
 from matplotlib.legend_handler import HandlerLine2D
 import sys
+import os
+import math
+
 
 
 def chosenNetworkModelWeights():
@@ -193,12 +196,6 @@ def activation_function(n):
 def derivative_function(n):
     #return hyperbolic_tangent_dv(n)
     return sigmoid_dv(n)
-############################################################
-
-import os
-import math
-#from pylab import *
-#import numpy as np
 
 ###########################################################################
 #   Return configured data to use in Neural Network with 

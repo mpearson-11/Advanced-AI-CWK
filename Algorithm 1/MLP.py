@@ -17,13 +17,13 @@ import sys
 from Utility import *
 #--------------------------------------------------------------------------
 #Scientific Packages for plotting and array manipulation
-import pylabs
+import pylab
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import spline
 from matplotlib.legend_handler import HandlerLine2D
 from cPickle import *
-from finalNetwork import *
+
 
 #Plot Network
 def plotNN(Network):
