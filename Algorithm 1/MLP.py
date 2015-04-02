@@ -1,4 +1,4 @@
-#   @Copywright Max Pearson
+#   Student Name: Max Pearson
 #   Student ID: B123103
 #   Date Created 19/03/2015
 #
@@ -17,7 +17,7 @@ import sys
 from Utility import *
 #--------------------------------------------------------------------------
 #Scientific Packages for plotting and array manipulation
-import pylab
+import pylabs
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import spline
@@ -25,17 +25,19 @@ from matplotlib.legend_handler import HandlerLine2D
 from cPickle import *
 from finalNetwork import *
 
-
+#Plot Network
 def plotNN(Network):
     Network.plotErrors()
     Network.plotLearning()
     Network.plotPrediction()
 
+#Save Network as Objet for Later use
 def saveNN(Network,name):
     File=open(name+"Object.bin","w")
     dump(Network,File)
     File.close()
 
+#Load Object
 def loadNN(name):
     File=open(name+"Object.bin","r")
     Network=load(File)
@@ -101,6 +103,7 @@ def showNetwork(network):
 
 #===============================================================
 #===============================================================
+#   Neuron
 class Neuron:
 
     def __init__(self,i):
@@ -129,6 +132,7 @@ class Neuron:
         self.activate()
 #===============================================================
 #===============================================================
+#   Layer
 class Layer:
     def __init__(self,name,startIndex,length):
         self.name=name
@@ -141,6 +145,7 @@ class Layer:
             self.Neurons.append(neuron)
 #===============================================================
 #===============================================================
+#   Layers
 class Layers:
     
     def __init__(self,chosen):
@@ -178,6 +183,7 @@ class Layers:
 
 #===============================================================
 #===============================================================
+#   Main Neural Network
 class NN:
     def __init__(self,inputs,hidden,outputs,name):
         
@@ -469,12 +475,14 @@ class NN:
         self.testDataOutputValues=[]
         self.testErrors=[]
 
+        print "\nSPLIT\n\n"
         for values in examples:
             self.feed_forward(values[0])
             actual=values[1]
             predictor=self.getPrediction()
             self.testDataPredictions.append(predictor)
             self.testDataOutputValues.append(actual[0])
+            print "Output - {0} Prediction - {1}".format(actual[0],predictor)
 
             error = self.getError(values[0])
             self.testErrors.append(error)
@@ -526,6 +534,7 @@ class NN:
         else:
             pass
 #===============================================================
+    #   Check Exit Counter
     def checkCount(self,new,old):
         if (new < old):
             self.exitCounter=0
@@ -533,6 +542,7 @@ class NN:
         else:
             self.exitCounter+=1   
 #===============================================================
+    #   Plot Training and Validation Errors
     def plotErrors(self):
 
         plt.figure()
@@ -563,6 +573,7 @@ class NN:
         plt.savefig(self.netName+"_Errors.pdf")
 
 #===============================================================
+    #   Plot Learning rate changes
     def plotLearning(self):
         plt.figure()
        
@@ -580,6 +591,7 @@ class NN:
         plt.savefig(self.netName+"_Learning.pdf")
 #===============================================================
 #===============================================================
+    #   Plot Predictions
     def plotPrediction(self):
         
         plt.figure()
@@ -766,8 +778,6 @@ def runNetwork():
     #
     (f_input,f_hidden) =  (8,6)
     (n_trainF,n_validF,n_testF,n_outputF) = getNetworkArrays(f_input,0.15)
-    n_testF= createNormalisedDataSet(  0, 560, data,  f_input)
-
     FinalNetwork = NN(f_input,f_hidden,n_outputF,"FinalNetwork")
     
     
@@ -869,18 +879,28 @@ def runNetwork():
                     
                     elif n ==7:
 
+                        #Test All Data in increments of 15%
                         
                         FinalNetwork.learning_rate      = 0.5
                         FinalNetwork.momentum           = 0.9
                         FinalNetwork.weightDecayFactor  = 0.025
                         FinalNetwork.runProgram(n_trainF,n_validF,15)
-                        FinalNetwork.test(n_testF)
-                        
-                        saveNN(FinalNetwork,"FinalNetwork")
-                        
-                        FinalNetwork.plotPrediction()
-                        FinalNetwork.plotLearning()
-                        FinalNetwork.plotErrors()
+
+                        n_test1= createNormalisedDataSet(  0, 84, data,  f_input)
+                        n_test2= createNormalisedDataSet(  84, 168, data,  f_input)
+                        n_test3= createNormalisedDataSet( 168, 252, data,  f_input)
+                        n_test4= createNormalisedDataSet(  252, 336, data,  f_input)
+                        n_test5= createNormalisedDataSet(  336, 420, data,  f_input)
+                        n_test6= createNormalisedDataSet(  420, 504, data,  f_input)
+                        n_test7= createNormalisedDataSet(  504, 597, data,  f_input)
+
+                        FinalNetwork.test(n_test1)
+                        FinalNetwork.test(n_test2)
+                        FinalNetwork.test(n_test3)
+                        FinalNetwork.test(n_test4)
+                        FinalNetwork.test(n_test5)
+                        FinalNetwork.test(n_test6)
+                        FinalNetwork.test(n_test7)
 
                     else:
                         break
@@ -890,7 +910,7 @@ def runNetwork():
         elif n==2:
 
             while True:
-                
+                #   Original Network Plotting (unsure as to working!!)
                 try:
                     n=int(raw_input("Which Network: "))
                 
@@ -947,6 +967,7 @@ def runNetwork():
         elif n==4:
             n=int(raw_input("Which Network: "))
             
+            #Network Plotting
             try:
                 if n==1:
                     Network1.plotPrediction()
